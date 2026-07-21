@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>津樓</title>
+<title>津樓 Liquid Building</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -230,7 +230,6 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   flex-shrink:0;background:var(--white);
   border-top:1px solid var(--border);
   padding:14px 16px;
-  padding-bottom:max(14px,calc(env(safe-area-inset-bottom,0px)+8px));
   box-shadow:0 -4px 20px rgba(0,0,0,.06);
 }
 .cart-date-tag{
@@ -272,14 +271,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   transition:all .15s;
 }
 .btn-order:active{background:var(--blue2);transform:scale(.98);}
-.btn-order::before{
-  content:'';position:absolute;top:-50%;left:-60%;
-  width:40%;height:200%;background:rgba(255,255,255,.15);
-  transform:skewX(-20deg);animation:shim 2.5s ease-in-out infinite;
-}
-@keyframes shim{0%{left:-60%;}100%{left:130%;}}
 .btn-order:disabled{background:var(--border2);color:var(--text3);box-shadow:none;}
-.btn-order:disabled::before{display:none;}
 
 /* ── OVERLAYS ── */
 .overlay{
@@ -580,8 +572,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 <div class="page active" id="page-pos">
   <div class="topbar">
     <div class="topbar-brand">
-      <div class="topbar-name">津樓 Liquid Building</div>
-      <div class="topbar-sub">POS · 點餐系統</div>
+      <div class="topbar-name"津樓 Liquid Building</div>
+      <div class="topbar-sub">POS 點餐系統</div>
     </div>
   </div>
 
