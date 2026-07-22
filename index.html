@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>津樓</title>
+<title>津丘 Chill-In</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -349,6 +349,28 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 /* ── MGMT ── */
 .mgmt-scroll{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:14px 16px 20px;}
 .mgmt-scroll::-webkit-scrollbar{display:none;}
+.cat-mgmt-section{
+  background:var(--card);border-radius:var(--r-sm);
+  box-shadow:var(--shadow-sm);padding:12px 14px;margin-bottom:14px;
+  border:1.5px solid var(--border);
+}
+.cat-mgmt-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.cat-mgmt-hdr>span{font-size:13px;font-weight:800;color:var(--text);letter-spacing:.5px;}
+.cat-add-btn{
+  background:var(--blue-lt);color:var(--blue);border:none;border-radius:var(--rpill);
+  font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;
+}
+.cat-mgmt-list{display:flex;flex-wrap:wrap;gap:8px;}
+.cat-mgmt-chip{
+  display:flex;align-items:center;gap:5px;
+  background:var(--bg);border:1.5px solid var(--border);border-radius:var(--rpill);
+  padding:5px 6px 5px 10px;font-size:12px;font-weight:700;color:var(--text);
+}
+.cat-mgmt-emoji{font-size:13px;}
+.cat-mgmt-icon{
+  width:22px;height:22px;border-radius:50%;border:none;background:var(--white);
+  font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
 .mgmt-card{
   display:flex;align-items:center;gap:12px;
   background:var(--card);border-radius:var(--r-sm);
@@ -446,6 +468,15 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   white-space:nowrap;flex-shrink:0;
 }
 .send-btn:active{background:#1e9e50;}
+.paid-toggle{
+  height:28px;padding:0 10px;border-radius:var(--rpill);
+  background:var(--red-lt);border:1.5px solid var(--red);color:var(--red);
+  font-size:11px;font-weight:800;cursor:pointer;
+  white-space:nowrap;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .15s;
+}
+.paid-toggle.paid{background:var(--green-lt);border-color:var(--green);color:var(--green);}
 .ocard{background:var(--card);border-radius:var(--r-sm);margin-bottom:8px;overflow:hidden;box-shadow:var(--shadow-sm);border:1.5px solid var(--border);transition:all .15s;}
 .ocard.expanded{border-color:var(--blue);box-shadow:0 4px 16px rgba(67,86,224,.15);}
 .ocard.picked{border-color:var(--red);background:var(--red-lt);}
@@ -572,7 +603,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 <div class="page active" id="page-pos">
   <div class="topbar">
     <div class="topbar-brand">
-      <div class="topbar-name">津樓</div>
+      <div class="topbar-name">津丘 Chill-In</div>
       <div class="topbar-sub">POS · 點餐系統</div>
     </div>
   </div>
@@ -591,10 +622,10 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   </div>
 
   <div class="cat-strip">
-    <div class="cat-pill active" onclick="filterCat('全部',this)">🌊 全部</div>
-    <div class="cat-pill" onclick="filterCat('生蠔',this)">🦪 生蠔系列</div>
-    <div class="cat-pill" onclick="filterCat('主食',this)">🍚 主食</div>
-    <div class="cat-pill" onclick="filterCat('輕食',this)">🥖 輕食</div>
+    <div class="cat-pill active" data-cat="全部" onclick="filterCat('全部',this)">🌊 全部</div>
+    <div class="cat-pill" data-cat="生蠔" onclick="filterCat('生蠔',this)">🦪 生蠔系列</div>
+    <div class="cat-pill" data-cat="主食" onclick="filterCat('主食',this)">🍚 主食</div>
+    <div class="cat-pill" data-cat="輕食" onclick="filterCat('輕食',this)">🥖 輕食</div>
   </div>
 
   <div class="scroll">
@@ -819,9 +850,19 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
           <option value="主食">🍚 主食</option>
           <option value="輕食">🥖 輕食</option>
         </select>
+        <div style="margin-top:6px;text-align:right;"><span onclick="openAddCat()" style="font-size:12px;color:var(--blue);font-weight:700;cursor:pointer;">＋ 新增分類</span></div>
       </div>
     </div>
     <div class="sheet-btns"><button class="sbtn cancel" onclick="closeOvl('addItemOvl')">取消</button><button class="sbtn confirm" onclick="doAddItem()">＋ 新增品項</button></div>
+  </div>
+</div>
+<div class="overlay" id="addCatOvl">
+  <div class="sheet"><span class="sheet-ico">🏷️</span><h3>新增分類</h3>
+    <div class="add-item-form">
+      <div class="ai-field"><label>圖示（emoji，選填）</label><input id="ac-emoji" type="text" placeholder="例：🍰" maxlength="4"/></div>
+      <div class="ai-field"><label>分類名稱 *</label><input id="ac-name" type="text" placeholder="例：甜點系列" maxlength="20"/></div>
+    </div>
+    <div class="sheet-btns"><button class="sbtn cancel" onclick="closeOvl('addCatOvl')">取消</button><button class="sbtn confirm" onclick="doAddCat()">＋ 新增分類</button></div>
   </div>
 </div>
 
@@ -844,6 +885,92 @@ const menuData=[
 const mP={},mC={};menuData.forEach(m=>{mP[m.id]=m.price;mC[m.id]=m.cost;});
 const qty={};menuData.forEach(m=>qty[m.id]=0);qty.oyster2=2;qty.oysrice=1;
 let customItems=[];
+
+let categories=[
+  {id:'生蠔',emoji:'🦪',name:'生蠔系列'},
+  {id:'主食',emoji:'🍚',name:'主食'},
+  {id:'輕食',emoji:'🥖',name:'輕食'},
+];
+
+function catNextId(){let i=1;while(categories.find(c=>c.id==='cat_'+i))i++;return 'cat_'+i;}
+
+function renderCatPills(){
+  const strip=document.querySelector('.cat-strip');
+  if(!strip)return;
+  const activeCat=strip.querySelector('.cat-pill.active');
+  const activeId=activeCat?activeCat.dataset.cat:'全部';
+  strip.innerHTML=`<div class="cat-pill${activeId==='全部'?' active':''}" data-cat="全部" onclick="filterCat('全部',this)">🌊 全部</div>`+
+    categories.map(c=>`<div class="cat-pill${activeId===c.id?' active':''}" data-cat="${c.id}" onclick="filterCat('${c.id}',this)">${c.emoji} ${c.name}</div>`).join('');
+}
+
+function ensureCatSection(catId){
+  if(document.getElementById('sec-'+catId))return;
+  const scroll=document.querySelector('.scroll');
+  const c=categories.find(x=>x.id===catId);
+  if(!scroll||!c)return;
+  const div=document.createElement('div');
+  div.id='sec-'+catId;
+  div.innerHTML=`<div class="sec-hdr"><span class="sec-hdr-label">${c.emoji} ${c.name}</span><div class="sec-hdr-line"></div></div><div class="menu-list" id="grid-${catId}"></div>`;
+  scroll.insertBefore(div,scroll.lastElementChild?scroll.lastElementChild.nextSibling:null);
+  scroll.appendChild(div);
+}
+
+function updateAiCatOptions(){
+  const sel=document.getElementById('ai-cat');
+  if(!sel)return;
+  const cur=sel.value;
+  sel.innerHTML=categories.map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join('');
+  if(categories.find(c=>c.id===cur))sel.value=cur;
+}
+
+function openAddCat(){
+  document.getElementById('ac-emoji').value='';
+  document.getElementById('ac-name').value='';
+  document.getElementById('addCatOvl').classList.add('show');
+}
+function doAddCat(){
+  const emoji=document.getElementById('ac-emoji').value.trim()||'🍽️';
+  const name=document.getElementById('ac-name').value.trim();
+  if(!name){showToast('請輸入分類名稱','#E05050');return;}
+  const id=catNextId();
+  categories.push({id,emoji,name});
+  ensureCatSection(id);
+  renderCatPills();
+  updateAiCatOptions();
+  closeOvl('addCatOvl');
+  renderMgmt();
+  showToast('✅ 已新增分類：'+name,'#27AE60');
+}
+function editCatPrompt(catId){
+  const c=categories.find(x=>x.id===catId);
+  if(!c)return;
+  const newName=prompt('分類名稱',c.name);
+  if(newName===null)return;
+  const trimmed=newName.trim();
+  if(!trimmed){showToast('分類名稱不可為空','#E05050');return;}
+  const newEmoji=prompt('分類圖示（emoji，選填）',c.emoji);
+  c.name=trimmed;
+  if(newEmoji!==null&&newEmoji.trim())c.emoji=newEmoji.trim();
+  const hdr=document.querySelector('#sec-'+catId+' .sec-hdr-label');
+  if(hdr)hdr.textContent=c.emoji+' '+c.name;
+  renderCatPills();
+  updateAiCatOptions();
+  renderMgmt();
+  showToast('✅ 分類已更新','#27AE60');
+}
+function deleteCatPrompt(catId){
+  const c=categories.find(x=>x.id===catId);
+  if(!c)return;
+  const inUse=menuData.some(m=>m.cat===catId);
+  if(inUse){showToast('此分類尚有品項，請先移除或改分類','#E05050');return;}
+  if(!confirm(`確定刪除分類「${c.name}」嗎？`))return;
+  categories=categories.filter(x=>x.id!==catId);
+  const sec=document.getElementById('sec-'+catId);if(sec)sec.remove();
+  renderCatPills();
+  updateAiCatOptions();
+  renderMgmt();
+  showToast('🗑 已刪除分類：'+c.name,'#E05050');
+}
 
 let posOffset=0,pendingOffset=null;
 function getPosDate(){const d=new Date();d.setDate(d.getDate()+posOffset);d.setHours(12,0,0,0);return d;}
@@ -894,8 +1021,8 @@ function confirmDate(){
 function filterCat(cat,el){
   document.querySelectorAll('.cat-pill').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
-  ['生蠔','主食','輕食'].forEach(c=>{
-    const s=document.getElementById('sec-'+c);if(s)s.style.display=(cat==='全部'||cat===c)?'':'none';
+  categories.forEach(c=>{
+    const s=document.getElementById('sec-'+c.id);if(s)s.style.display=(cat==='全部'||cat===c.id)?'':'none';
   });
 }
 
@@ -952,7 +1079,7 @@ function doSubmit(){
   const ts=new Date(posD.getFullYear(),posD.getMonth(),posD.getDate(),now.getHours(),now.getMinutes(),now.getSeconds());
   const li=[...menuData.filter(m=>qty[m.id]>0).map(m=>({name:m.name,qty:qty[m.id],price:m.price,cost:m.cost})),...customItems.map(ci=>({name:ci.name,qty:ci.qty,price:ci.price,cost:0}))];
   const t=li.reduce((s,i)=>s+i.price*i.qty,0),c=li.reduce((s,i)=>s+i.cost*i.qty,0);
-  orderHistory.unshift({ts,total:t,cost:c,profit:t-c,items:li,sel:false,status:'pending'});
+  orderHistory.unshift({ts,total:t,cost:c,profit:t-c,items:li,sel:false,status:'pending',paid:false});
   const btn=document.getElementById('submitBtn');btn.textContent='✓ 送出中...';
   setTimeout(()=>{
     menuData.forEach(m=>{
@@ -1038,8 +1165,20 @@ function handleImageUpload(idx,input){
 function getThumb(id){const el=document.querySelector('#card-'+id+' .mcard-img img');return el?el.src:'';}
 
 
+function renderCatMgmtBlock(){
+  return `<div class="cat-mgmt-section">
+    <div class="cat-mgmt-hdr"><span>分類管理</span><button class="cat-add-btn" onclick="openAddCat()">＋ 新增分類</button></div>
+    <div class="cat-mgmt-list">${categories.map(c=>`
+      <div class="cat-mgmt-chip">
+        <span class="cat-mgmt-emoji">${c.emoji}</span><span class="cat-mgmt-name">${c.name}</span>
+        <button class="cat-mgmt-icon" onclick="editCatPrompt('${c.id}')">✏️</button>
+        <button class="cat-mgmt-icon" onclick="deleteCatPrompt('${c.id}')">🗑</button>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
 function renderMgmt(){
-  document.getElementById('mgmtList').innerHTML=menuData.map((item,idx)=>`
+  document.getElementById('mgmtList').innerHTML=renderCatMgmtBlock()+menuData.map((item,idx)=>`
     <div class="mgmt-card">
       ${getThumbOrEmoji(item.id)}
       <div class="mgmt-info">
@@ -1084,6 +1223,7 @@ function saveEdit(i){
 function toggleActive(i,v){menuData[i].active=v;showToast(v?'✅ 已啟用':'⛔ 已停用',v?'#27AE60':'#E05050');}
 function openAddItem(){
   ['ai-name','ai-unit','ai-price','ai-cost'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  updateAiCatOptions();
   document.getElementById('ai-cat').value='生蠔';
   document.getElementById('addItemOvl').classList.add('show');
 }
@@ -1202,6 +1342,14 @@ function doBatchDel(){
 }
 
 // Mark a single order as sent
+function togglePaid(ev,oi){
+  ev.stopPropagation();
+  const o=orderHistory[oi];
+  if(!o)return;
+  o.paid=!o.paid;
+  renderOrders();
+  showToast(o.paid?'✅ 已標記為已付款':'↺ 已標記為未付款',o.paid?'#27AE60':'#F4A234');
+}
 function markAsSent(oi){
   orderHistory[oi].status='sent';
   renderOrders();
@@ -1240,7 +1388,7 @@ function renderOrders(){
     return `<div class="oday-group">
       <div class="oday-hdr">
         <div><div class="oday-date">📅 ${date}</div><div class="oday-meta">共 ${dayOrders.length} 筆 · $${dayTotal.toLocaleString()}</div></div>
-        ${isPending?`<button class="pill-btn primary" style="font-size:11px;" onclick="enterBatch()">☑ 批次</button>`:`<button class="pill-btn warn" onclick="addNewOrder('${date}')">＋ 新增</button>`}
+        ${isPending?`<button class="pill-btn primary" style="font-size:11px;" onclick="enterBatch()">☑ 批次</button>`:''}
       </div>
       ${dayOrders.map(o=>`
         <div class="ocard${o.sel?' picked':''}" id="ocard-${o.oi}">
@@ -1253,6 +1401,7 @@ function renderOrders(){
               <div class="ocard-items">${o.items.map(it=>it.name+(it.qty>1?'×'+it.qty:'')).join(' · ')}</div>
             </div>
             ${isPending?`<button class="send-btn" onclick="markAsSent(${o.oi})">✓送</button>`:`<div class="oexpand" onclick="toggleOCard(${o.oi})">⌄</div>`}
+            <div class="paid-toggle${o.paid?' paid':''}" onclick="togglePaid(event,${o.oi})">${o.paid?'✓ 已付':'未付款'}</div>
           </div>
           <div class="odetail" id="odet-${o.oi}">
             <div class="odt-edit"><label>日期時間</label><input class="odt-input" type="datetime-local" id="odt-${o.oi}" value="${toDTL(o.ts)}"/></div>
@@ -1285,7 +1434,7 @@ function saveOCard(oi){const o=orderHistory[oi];const dtEl=document.getElementBy
 let pendingDelOi=null;
 function askDelOrder(oi){pendingDelOi=oi;document.getElementById('delOvl').classList.add('show');}
 function doDelOrder(){if(pendingDelOi===null)return;orderHistory.splice(pendingDelOi,1);pendingDelOi=null;closeOvl('delOvl');renderOrders();showToast('🗑 訂單已刪除','#E05050');}
-function addNewOrder(dateStr){const p=dateStr.split('/');const ts=new Date(+p[0],+p[1]-1,+p[2],12,0,0);const m=menuData[0];orderHistory.unshift({ts,total:m.price,cost:m.cost,profit:m.price-m.cost,items:[{name:m.name,qty:1,price:m.price,cost:m.cost}],sel:false,status:'pending'});renderOrders();showToast('✅ 已新增訂單','#27AE60');setTimeout(()=>{const c=document.querySelector('.ocard');if(c)c.classList.add('expanded');},60);}
+function addNewOrder(dateStr){const p=dateStr.split('/');const ts=new Date(+p[0],+p[1]-1,+p[2],12,0,0);const m=menuData[0];orderHistory.unshift({ts,total:m.price,cost:m.cost,profit:m.price-m.cost,items:[{name:m.name,qty:1,price:m.price,cost:m.cost}],sel:false,status:'pending',paid:false});renderOrders();showToast('✅ 已新增訂單','#27AE60');setTimeout(()=>{const c=document.querySelector('.ocard');if(c)c.classList.add('expanded');},60);}
 
 let rMode='today';
 function initReport(){
@@ -1356,6 +1505,6 @@ function renderReport(mode){
 function toggleDC(i){const el=document.getElementById('dc-'+i);if(el)el.classList.toggle('open');}
 
 document.querySelectorAll('.overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('show');});});
-renderDateBar();updateCart();
+renderDateBar();updateCart();renderCatPills();
 </script>
 </body></html>
