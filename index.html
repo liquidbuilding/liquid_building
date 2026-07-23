@@ -46,6 +46,17 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .topbar-name{font-family:'Noto Serif TC',serif;font-size:20px;font-weight:900;color:var(--blue);letter-spacing:.5px;line-height:1;}
 .topbar-sub{font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-top:3px;font-weight:600;}
 .topbar-right{display:flex;gap:10px;align-items:center;}
+.cloud-status{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;color:var(--text3);}
+.cloud-dot{width:8px;height:8px;border-radius:50%;background:var(--border2);flex-shrink:0;}
+.cloud-dot.on{background:var(--green);}
+.cloud-dot.err{background:var(--red);}
+.cloud-dot.wait{background:var(--orange);}
+.tog{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0;}
+.tog input{opacity:0;width:0;height:0;}
+.tog-sl{position:absolute;cursor:pointer;inset:0;background:var(--border2);border-radius:999px;transition:.2s;}
+.tog-sl::before{content:'';position:absolute;width:18px;height:18px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.tog input:checked+.tog-sl{background:var(--blue);}
+.tog input:checked+.tog-sl::before{transform:translateX(18px);}
 .topbar-btn{
   width:40px;height:40px;border-radius:50%;
   background:var(--blue-lt);border:none;
@@ -531,6 +542,16 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .rb-sub{font-size:10px;color:rgba(255,255,255,.7);letter-spacing:2px;text-transform:uppercase;margin-top:4px;font-weight:600;}
 .rb-dow{font-size:26px;color:rgba(255,255,255,.2);line-height:1;font-weight:900;}
 .report-tabs{display:flex;gap:5px;margin-bottom:14px;background:var(--white);border-radius:var(--rpill);padding:5px;box-shadow:var(--shadow-sm);}
+.export-btn{
+  width:100%;height:44px;margin-bottom:8px;
+  background:var(--green);border:none;border-radius:var(--r-xs);
+  color:white;font-weight:800;font-size:13px;cursor:pointer;
+  box-shadow:0 4px 14px rgba(39,174,96,.3);
+  display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.export-btn:active{background:#1e9e50;}
+.export-hint{font-size:10.5px;color:var(--text3);line-height:1.5;margin-bottom:14px;font-weight:500;}
+.export-hint b{color:var(--text2);font-weight:800;}
 .rtab{flex:1;padding:8px;border-radius:var(--rpill);border:none;background:transparent;color:var(--text3);font-size:12px;font-weight:700;cursor:pointer;transition:all .18s;}
 .rtab.active{background:var(--blue);color:white;box-shadow:0 3px 10px rgba(67,86,224,.3);}
 .dp-box{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow-sm);padding:16px;margin-bottom:14px;display:none;border:1.5px solid var(--border);}
@@ -538,7 +559,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .dp-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
 .dp-row:last-of-type{margin-bottom:0;}
 .dp-lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);width:28px;flex-shrink:0;}
-.dp-in{flex:1;background:var(--bg);border:1.5px solid var(--border2);border-radius:var(--r-xs);padding:8px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;font-weight:600;outline:none;color-scheme:light;}
+.dp-in{flex:1 1 0;width:0;min-width:0;height:40px;box-sizing:border-box;background:var(--bg);border:1.5px solid var(--border2);border-radius:var(--r-xs);padding:0 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;font-weight:600;outline:none;color-scheme:light;line-height:normal;}
 .dp-in:focus{border-color:var(--blue);background:white;}
 .dp-in-text{font-size:12px;}
 .dp-hint{font-size:10px;color:var(--text3);margin-top:6px;font-weight:500;}
@@ -605,6 +626,10 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
     <div class="topbar-brand">
       <div class="topbar-name">津丘 Chill-In</div>
       <div class="topbar-sub">POS · 點餐系統</div>
+    </div>
+    <div class="topbar-right">
+      <div class="cloud-status"><span class="cloud-dot" id="cloudDot"></span><span id="cloudStatusTxt">未啟用</span></div>
+      <div class="topbar-btn" onclick="openCloudSheet()" title="雲端同步設定">⚙️</div>
     </div>
   </div>
 
@@ -720,6 +745,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   <div class="topbar">
     <div class="topbar-brand"><div class="topbar-name">菜單修改</div><div class="topbar-sub">MENU · EDITOR</div></div>
     <div class="topbar-right">
+      <div class="topbar-btn" onclick="openCatManage()" style="font-size:18px;" title="分類管理">🏷️</div>
       <div class="topbar-btn" onclick="openAddItem()" style="font-size:22px;color:var(--blue);" title="新增品項">＋</div>
     </div>
   </div>
@@ -769,6 +795,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
       <div><div class="rb-date" id="rbDate">—</div><div class="rb-sub">TODAY · 今日日期</div></div>
       <div class="rb-dow" id="rbDow">—</div>
     </div>
+    <button class="export-btn" onclick="exportExcel()">📊 匯出 Excel（目前區間）</button>
+    <div class="export-hint">匯出 CSV 檔，Excel 直接開啟；每列一個品項，含<b>分類</b>與<b>每筆收益</b>欄位，可在 Excel 內排序、篩選、樞紐分析。</div>
     <div class="report-tabs">
       <button class="rtab active" onclick="setRMode('today',this)">今日</button>
       <button class="rtab" onclick="setRMode('month',this)">本月</button>
@@ -777,16 +805,13 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
       <button class="rtab" onclick="setRMode('range',this)">區間</button>
     </div>
     <div class="dp-box" id="dp-single">
-      <div class="dp-row"><span class="dp-lbl">日期</span><input class="dp-in" type="date" id="dp-s-date" onchange="syncDT('dp-s-date','dp-s-text')"/></div>
-      <div class="dp-row"><span class="dp-lbl"></span><input class="dp-in dp-in-text" type="text" id="dp-s-text" placeholder="YYYY-MM-DD" maxlength="10" oninput="syncTD('dp-s-text','dp-s-date')"/></div>
+      <div class="dp-row"><span class="dp-lbl">日期</span><input class="dp-in" type="date" id="dp-s-date" onchange="syncDT('dp-s-date','dp-s-text')"/><input class="dp-in dp-in-text" type="text" id="dp-s-text" placeholder="YYYY-MM-DD" maxlength="10" oninput="syncTD('dp-s-text','dp-s-date')"/></div>
       <div class="dp-hint">📱 iOS 可直接在文字框輸入 YYYY-MM-DD</div>
       <button class="dp-apply" onclick="applyFilter()">套用查詢</button>
     </div>
     <div class="dp-box" id="dp-range">
-      <div class="dp-row"><span class="dp-lbl">從</span><input class="dp-in" type="date" id="dp-r-start" onchange="syncDT('dp-r-start','dp-r-start-t')"/></div>
-      <div class="dp-row"><span class="dp-lbl"></span><input class="dp-in dp-in-text" type="text" id="dp-r-start-t" placeholder="YYYY-MM-DD" maxlength="10" oninput="syncTD('dp-r-start-t','dp-r-start')"/></div>
-      <div class="dp-row" style="margin-top:6px;"><span class="dp-lbl">至</span><input class="dp-in" type="date" id="dp-r-end" onchange="syncDT('dp-r-end','dp-r-end-t')"/></div>
-      <div class="dp-row"><span class="dp-lbl"></span><input class="dp-in dp-in-text" type="text" id="dp-r-end-t" placeholder="YYYY-MM-DD" maxlength="10" oninput="syncTD('dp-r-end-t','dp-r-end')"/></div>
+      <div class="dp-row"><span class="dp-lbl">從</span><input class="dp-in" type="date" id="dp-r-start" onchange="syncDT('dp-r-start','dp-r-start-t')"/><input class="dp-in dp-in-text" type="text" id="dp-r-start-t" placeholder="YYYY-MM-DD" maxlength="10" oninput="syncTD('dp-r-start-t','dp-r-start')"/></div>
+      <div class="dp-row" style="margin-top:6px;"><span class="dp-lbl">至</span><input class="dp-in" type="date" id="dp-r-end" onchange="syncDT('dp-r-end','dp-r-end-t')"/><input class="dp-in dp-in-text" type="text" id="dp-r-end-t" placeholder="YYYY-MM-DD" maxlength="10" oninput="syncTD('dp-r-end-t','dp-r-end')"/></div>
       <div class="dp-hint">📱 iOS 可直接在文字框輸入 YYYY-MM-DD</div>
       <button class="dp-apply" onclick="applyFilter()">套用查詢</button>
     </div>
@@ -866,6 +891,30 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   </div>
 </div>
 
+<div class="overlay" id="catManageOvl">
+  <div class="sheet">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+      <h3 style="margin:0;">🏷️ 分類管理</h3>
+      <button class="cat-add-btn" onclick="openAddCat()">＋ 新增分類</button>
+    </div>
+    <div id="catManageList"></div>
+    <div class="sheet-btns"><button class="sbtn confirm" style="width:100%;" onclick="closeOvl('catManageOvl')">完成</button></div>
+  </div>
+</div>
+
+<div class="overlay" id="cloudOvl">
+  <div class="sheet"><span class="sheet-ico">☁️</span><h3>雲端同步設定</h3>
+    <div class="dp-hint" style="margin-bottom:14px;text-align:left;">設定後可接收客人掃碼訂單，並自動備份訂單與菜單到 Google Sheet。</div>
+    <div class="add-item-form">
+      <div class="ai-field"><label>GAS 網頁應用程式網址</label><input id="cl-url" type="url" placeholder="https://script.google.com/macros/s/.../exec"/></div>
+      <div class="ai-field"><label>API 金鑰（需與 Code.gs 的 API_KEY 相同）</label><input id="cl-key" type="text" placeholder="例：jinlou2026" maxlength="40"/></div>
+      <div class="ai-field" style="flex-direction:row;align-items:center;justify-content:space-between;"><label style="margin:0;">啟用雲端同步</label><label class="tog"><input type="checkbox" id="cl-on"/><span class="tog-sl"></span></label></div>
+      <div class="dp-hint" id="cloudTestResult">尚未測試連線</div>
+    </div>
+    <div class="sheet-btns"><button class="sbtn cancel" onclick="testCloudConnection()">📡 測試連線</button><button class="sbtn confirm" onclick="saveCloudSettings()">✓ 儲存</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"><div class="tdot" id="tdot"></div><span id="tmsg"></span></div>
 
 <script>
@@ -885,6 +934,53 @@ const menuData=[
 const mP={},mC={};menuData.forEach(m=>{mP[m.id]=m.price;mC[m.id]=m.cost;});
 const qty={};menuData.forEach(m=>qty[m.id]=0);qty.oyster2=2;qty.oysrice=1;
 let customItems=[];
+
+let cloudConfig={url:'',key:'',enabled:false};
+
+function openCloudSheet(){
+  document.getElementById('cl-url').value=cloudConfig.url;
+  document.getElementById('cl-key').value=cloudConfig.key;
+  document.getElementById('cl-on').checked=cloudConfig.enabled;
+  document.getElementById('cloudTestResult').textContent=cloudConfig.url?'尚未測試連線':'尚未測試連線';
+  document.getElementById('cloudOvl').classList.add('show');
+}
+function updateCloudStatusUI(state){
+  const dot=document.getElementById('cloudDot');
+  const txt=document.getElementById('cloudStatusTxt');
+  if(!dot||!txt)return;
+  dot.className='cloud-dot';
+  if(state==='on'){dot.classList.add('on');txt.textContent='已連線';}
+  else if(state==='err'){dot.classList.add('err');txt.textContent='連線失敗';}
+  else if(state==='wait'){dot.classList.add('wait');txt.textContent='連線中...';}
+  else{txt.textContent='未啟用';}
+}
+async function testCloudConnection(){
+  const url=document.getElementById('cl-url').value.trim();
+  const key=document.getElementById('cl-key').value.trim();
+  const resEl=document.getElementById('cloudTestResult');
+  if(!/^https:\/\//.test(url)){resEl.textContent='⚠️ 請先貼上 GAS 網址';return;}
+  resEl.textContent='📡 測試連線中...';
+  updateCloudStatusUI('wait');
+  try{
+    const r=await fetch(url+(url.includes('?')?'&':'?')+'apiKey='+encodeURIComponent(key)+'&action=ping');
+    if(r.ok){resEl.textContent='✅ 連線成功';updateCloudStatusUI('on');}
+    else{resEl.textContent='⚠️ 連線失敗（狀態碼 '+r.status+'）';updateCloudStatusUI('err');}
+  }catch(e){
+    resEl.textContent='⚠️ 無法連線，請確認網址是否正確';
+    updateCloudStatusUI('err');
+  }
+}
+function saveCloudSettings(){
+  const url=document.getElementById('cl-url').value.trim();
+  const key=document.getElementById('cl-key').value.trim();
+  const on=document.getElementById('cl-on').checked;
+  if(on&&!/^https:\/\//.test(url)){showToast('請先填寫有效的 GAS 網址','#E05050');return;}
+  cloudConfig={url,key,enabled:on};
+  updateCloudStatusUI(on?'wait':'off');
+  if(on)testCloudConnection();
+  closeOvl('cloudOvl');
+  showToast('✅ 雲端同步設定已儲存','#27AE60');
+}
 
 let categories=[
   {id:'生蠔',emoji:'🦪',name:'生蠔系列'},
@@ -928,6 +1024,10 @@ function openAddCat(){
   document.getElementById('ac-name').value='';
   document.getElementById('addCatOvl').classList.add('show');
 }
+function refreshCatManageIfOpen(){
+  const ovl=document.getElementById('catManageOvl');
+  if(ovl&&ovl.classList.contains('show')){document.getElementById('catManageList').innerHTML=renderCatMgmtBlock();}
+}
 function doAddCat(){
   const emoji=document.getElementById('ac-emoji').value.trim()||'🍽️';
   const name=document.getElementById('ac-name').value.trim();
@@ -939,6 +1039,7 @@ function doAddCat(){
   updateAiCatOptions();
   closeOvl('addCatOvl');
   renderMgmt();
+  refreshCatManageIfOpen();
   showToast('✅ 已新增分類：'+name,'#27AE60');
 }
 function editCatPrompt(catId){
@@ -956,6 +1057,7 @@ function editCatPrompt(catId){
   renderCatPills();
   updateAiCatOptions();
   renderMgmt();
+  refreshCatManageIfOpen();
   showToast('✅ 分類已更新','#27AE60');
 }
 function deleteCatPrompt(catId){
@@ -969,6 +1071,7 @@ function deleteCatPrompt(catId){
   renderCatPills();
   updateAiCatOptions();
   renderMgmt();
+  refreshCatManageIfOpen();
   showToast('🗑 已刪除分類：'+c.name,'#E05050');
 }
 
@@ -1166,19 +1269,20 @@ function getThumb(id){const el=document.querySelector('#card-'+id+' .mcard-img i
 
 
 function renderCatMgmtBlock(){
-  return `<div class="cat-mgmt-section">
-    <div class="cat-mgmt-hdr"><span>分類管理</span><button class="cat-add-btn" onclick="openAddCat()">＋ 新增分類</button></div>
-    <div class="cat-mgmt-list">${categories.map(c=>`
+  return `<div class="cat-mgmt-list">${categories.map(c=>`
       <div class="cat-mgmt-chip">
         <span class="cat-mgmt-emoji">${c.emoji}</span><span class="cat-mgmt-name">${c.name}</span>
         <button class="cat-mgmt-icon" onclick="editCatPrompt('${c.id}')">✏️</button>
         <button class="cat-mgmt-icon" onclick="deleteCatPrompt('${c.id}')">🗑</button>
       </div>`).join('')}
-    </div>
-  </div>`;
+    </div>`;
+}
+function openCatManage(){
+  document.getElementById('catManageList').innerHTML=renderCatMgmtBlock();
+  document.getElementById('catManageOvl').classList.add('show');
 }
 function renderMgmt(){
-  document.getElementById('mgmtList').innerHTML=renderCatMgmtBlock()+menuData.map((item,idx)=>`
+  document.getElementById('mgmtList').innerHTML=menuData.map((item,idx)=>`
     <div class="mgmt-card">
       ${getThumbOrEmoji(item.id)}
       <div class="mgmt-info">
@@ -1465,6 +1569,34 @@ function getDV(dId,tId){
 function applyFilter(){
   ['dp-s-text','dp-r-start-t','dp-r-end-t'].forEach(tid=>{const tv=document.getElementById(tid);if(!tv)return;const v=tv.value.trim(),did=tid.replace('-t','').replace('-text','');const del=document.getElementById(did);if(del&&v&&/^\d{4}-\d{2}-\d{2}$/.test(v))del.value=v;});
   renderReport(rMode);
+}
+function csvCell(v){const s=String(v==null?'':v);return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
+function exportExcel(){
+  const f=filterByMode(rMode);
+  if(!f.length){showToast('目前區間沒有訂單可匯出','#F4A234');return;}
+  const lb={today:'今日',month:'本月',year:'年度',single:'單日',range:'區間'}[rMode]||'';
+  const head=['訂單編號','日期','時間','分類','品項','數量','單價','小計','單位成本','成本小計','收益(利潤)','狀態','付款狀態'];
+  const rows=[head];
+  f.slice().sort((a,b)=>a.ts-b.ts).forEach((o,idx)=>{
+    const d=new Date(o.ts);
+    const date=`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const time=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    const st=o.status==='sent'?'已送餐':'待送餐';
+    const pd=o.paid?'已付款':'未付款';
+    o.items.forEach(it=>{
+      const cat=(menuData.find(m=>m.name===it.name)||{}).cat||'其他';
+      const cost=it.cost||0,sub=it.price*it.qty,csub=cost*it.qty,prof=sub-csub;
+      rows.push([idx+1,date,time,cat,it.name,it.qty,it.price,sub,cost,csub,prof,st,pd]);
+    });
+  });
+  const csv='\uFEFF'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`津丘訂單_${lb}_${new Date().getFullYear()}${pad(new Date().getMonth()+1)}${pad(new Date().getDate())}.csv`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  showToast('📊 已匯出 Excel（CSV）','#27AE60');
 }
 function filterByMode(mode){
   const now=new Date();const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
