@@ -1088,8 +1088,8 @@ function updateAiCatOptions(){
   const sel=document.getElementById('ai-cat');
   if(!sel)return;
   const cur=sel.value;
-  sel.innerHTML=categories.map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join('');
-  if(categories.find(c=>c.id===cur))sel.value=cur;
+  sel.innerHTML=categories.map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join('')+`<option value="">➖ 無分類</option>`;
+  if(cur==='' || categories.find(c=>c.id===cur))sel.value=cur;
 }
 
 function openAddCat(){
@@ -1395,7 +1395,7 @@ function renderMgmt(){
     <div class="edit-form" id="ef-${idx}">
       <div class="erow">
         <div class="efield"><label>品項名稱</label><input id="en-${idx}" value="${item.name}"/></div>
-        <div class="efield"><label>分類</label><select id="ecat-${idx}">${categories.map(c=>`<option value="${c.id}"${c.id===item.cat?' selected':''}>${c.emoji} ${c.name}</option>`).join('')}</select></div>
+        <div class="efield"><label>分類</label><select id="ecat-${idx}">${categories.map(c=>`<option value="${c.id}"${c.id===item.cat?' selected':''}>${c.emoji} ${c.name}</option>`).join('')}<option value=""${!item.cat?' selected':''}>➖ 無分類</option></select></div>
       </div>
       <div class="erow">
         <div class="efield"><label>售價</label><input type="number" id="ep-${idx}" value="${item.price}"/></div>
@@ -1418,12 +1418,16 @@ function saveEdit(i){
   menuData[i].cost=parseInt(document.getElementById('ec-'+i).value);
   mP[menuData[i].id]=menuData[i].price;mC[menuData[i].id]=menuData[i].cost;
   const catSel=document.getElementById('ecat-'+i);
-  if(catSel&&catSel.value&&catSel.value!==menuData[i].cat){
+  if(catSel&&catSel.value!==menuData[i].cat){
     menuData[i].cat=catSel.value;
-    ensureCatSection(catSel.value);
     const card=document.getElementById('card-'+menuData[i].id);
-    const grid=document.getElementById('grid-'+catSel.value);
-    if(card&&grid)grid.appendChild(card);
+    if(catSel.value===''){
+      if(card)card.style.display='none';
+    }else{
+      ensureCatSection(catSel.value);
+      const grid=document.getElementById('grid-'+catSel.value);
+      if(card){card.style.display='';if(grid)grid.appendChild(card);}
+    }
   }
   document.getElementById('ef-'+i).classList.remove('open');
   renderMgmt();showToast('✅ 已儲存','#27AE60');
