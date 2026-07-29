@@ -1386,7 +1386,7 @@ function renderMgmt(){
     <div class="mgmt-card">
       ${getThumbOrEmoji(item.id)}
       <div class="mgmt-info">
-        <div class="mgmt-name"><span class="mgmt-cat-badge">${(categories.find(c=>c.id===item.cat)||{emoji:'➖',name:'無分類'}).emoji} ${(categories.find(c=>c.id===item.cat)||{emoji:'➖',name:'無分類'}).name}</span>${item.name}</div>
+        <div class="mgmt-name"><span class="mgmt-cat-badge">${(()=>{const c=categories.find(x=>x.id===item.cat);return c?`${c.emoji} ${c.name}`:'無分類';})()}</span>${item.name}</div>
         <div class="mgmt-meta">${item.unit} | 售 <b>$${item.price}</b> | <span style="color:#E05050;font-weight:700;">成本 $${item.cost}</span></div>
       </div>
       <div class="mgmt-actions">
