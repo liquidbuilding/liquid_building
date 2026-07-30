@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>津樓</title>
+<title>津丘 Chill-In</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -598,6 +598,21 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .dp-in{flex:1 1 0;width:0;min-width:0;height:40px;box-sizing:border-box;background:var(--bg);border:1.5px solid var(--border2);border-radius:var(--r-xs);padding:0 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;font-weight:600;outline:none;color-scheme:light;line-height:normal;}
 .dp-in:focus{border-color:var(--blue);background:white;}
 .dp-in-text{font-size:12px;}
+.dp-datewrap{position:relative;flex:1 1 0;min-width:0;height:40px;}
+.dp-datewrap .dp-in{width:100%;color:transparent;}
+.dp-datewrap .dp-in::-webkit-datetime-edit,
+.dp-datewrap .dp-in::-webkit-datetime-edit-fields-wrapper,
+.dp-datewrap .dp-in::-webkit-datetime-edit-text,
+.dp-datewrap .dp-in::-webkit-datetime-edit-month-field,
+.dp-datewrap .dp-in::-webkit-datetime-edit-day-field,
+.dp-datewrap .dp-in::-webkit-datetime-edit-year-field{color:transparent;}
+.dp-date-label{
+  position:absolute;top:0;left:0;right:0;bottom:0;
+  display:flex;align-items:center;padding:0 10px;
+  pointer-events:none;
+  font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:var(--text);
+}
+.dp-date-label:empty::before{content:'YYYY-MM-DD';color:var(--text3);font-weight:500;}
 .dp-hint{font-size:10px;color:var(--text3);margin-top:6px;font-weight:500;}
 .dp-apply{width:100%;height:40px;margin-top:12px;background:var(--blue);border:none;border-radius:var(--r-xs);color:white;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 4px 14px rgba(67,86,224,.3);}
 
@@ -660,7 +675,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 <div class="page active" id="page-pos">
   <div class="topbar">
     <div class="topbar-brand">
-      <div class="topbar-name">津樓</div>
+      <div class="topbar-name">津丘 Chill-In</div>
       <div class="topbar-sub">POS · 點餐系統</div>
     </div>
     <div class="topbar-right">
@@ -853,13 +868,13 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
       <button class="rtab" onclick="setRMode('range',this)">區間</button>
     </div>
     <div class="dp-box" id="dp-single">
-      <div class="dp-row"><span class="dp-lbl">日期</span><input class="dp-in" type="date" id="dp-s-date" onchange="syncDT('dp-s-date','dp-s-text')"/><input class="dp-in dp-in-text" type="text" id="dp-s-text" placeholder="YYYY-MM-DD" maxlength="10" oninput="syncTD('dp-s-text','dp-s-date')"/></div>
+      <div class="dp-row"><span class="dp-lbl">日期</span><div class="dp-datewrap"><input class="dp-in" type="date" id="dp-s-date" onchange="syncDT('dp-s-date','dp-s-text')"/><span class="dp-date-label" id="dp-s-date-lbl"></span></div><input class="dp-in dp-in-text" type="text" id="dp-s-text" placeholder="YYYY-MM-DD" maxlength="10" oninput="syncTD('dp-s-text','dp-s-date')"/></div>
       <div class="dp-hint">📱 iOS 可直接在文字框輸入 YYYY-MM-DD</div>
       <button class="dp-apply" onclick="applyFilter()">套用查詢</button>
     </div>
     <div class="dp-box" id="dp-range">
-      <div class="dp-row"><span class="dp-lbl">從</span><input class="dp-in" type="date" id="dp-r-start" onchange="syncDT('dp-r-start','dp-r-start-t')"/><input class="dp-in dp-in-text" type="text" id="dp-r-start-t" placeholder="YYYY-MM-DD" maxlength="10" oninput="syncTD('dp-r-start-t','dp-r-start')"/></div>
-      <div class="dp-row" style="margin-top:6px;"><span class="dp-lbl">至</span><input class="dp-in" type="date" id="dp-r-end" onchange="syncDT('dp-r-end','dp-r-end-t')"/><input class="dp-in dp-in-text" type="text" id="dp-r-end-t" placeholder="YYYY-MM-DD" maxlength="10" oninput="syncTD('dp-r-end-t','dp-r-end')"/></div>
+      <div class="dp-row"><span class="dp-lbl">從</span><div class="dp-datewrap"><input class="dp-in" type="date" id="dp-r-start" onchange="syncDT('dp-r-start','dp-r-start-t')"/><span class="dp-date-label" id="dp-r-start-lbl"></span></div><input class="dp-in dp-in-text" type="text" id="dp-r-start-t" placeholder="YYYY-MM-DD" maxlength="10" oninput="syncTD('dp-r-start-t','dp-r-start')"/></div>
+      <div class="dp-row" style="margin-top:6px;"><span class="dp-lbl">至</span><div class="dp-datewrap"><input class="dp-in" type="date" id="dp-r-end" onchange="syncDT('dp-r-end','dp-r-end-t')"/><span class="dp-date-label" id="dp-r-end-lbl"></span></div><input class="dp-in dp-in-text" type="text" id="dp-r-end-t" placeholder="YYYY-MM-DD" maxlength="10" oninput="syncTD('dp-r-end-t','dp-r-end')"/></div>
       <div class="dp-hint">📱 iOS 可直接在文字框輸入 YYYY-MM-DD</div>
       <button class="dp-apply" onclick="applyFilter()">套用查詢</button>
     </div>
@@ -1387,7 +1402,7 @@ function renderMgmt(){
       ${getThumbOrEmoji(item.id)}
       <div class="mgmt-info">
         <div class="mgmt-name"><span class="mgmt-cat-badge">${(()=>{const c=categories.find(x=>x.id===item.cat);return c?`${c.emoji} ${c.name}`:'無分類';})()}</span>${item.name}</div>
-        <div class="mgmt-meta">${item.unit} | 售 <b>$${item.price}</b> | <span style="color:#E05050;font-weight:700;">成本 $${item.cost}</span></div>
+        <div class="mgmt-meta">${item.unit} | 售 <b>$${item.price||0}</b> | <span style="color:#E05050;font-weight:700;">成本 $${item.cost||0}</span></div>
       </div>
       <div class="mgmt-actions">
         <button class="mgmt-edit-btn" onclick="toggleEdit(${idx})"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAHgUExURQAAAP91XP94W/90XBdEYaZiXf/ORwAyZERNYBRDYTRRXv+tTv/1PP+xTv/Ybv/rtP/XbP//zf/ttf/Wj//tuRdEYA04WhZDYRY/Xv91XP91XP91XP91XP91XP91XP91XP91XP91XP91W/91XP91XHZYXvByXP91XBRDYRxFYP91XBdEYRdEYf91XCVMXxVDYf/YRMasTf90XP/OR//ORvJyXP92W//OR35ZXhZDYcWWUhxGYP+xTf+zTf+xTv+xTv/adf/PSv/npf/UXf/rtP/qs//rs//rtP/rtP/rtP/rtP+8Yv+zUf+wTP/vtv/rtP/rtf/qs//jpv/GdAAAGIyYiv/rtP/rtP/rtP/yxBVDYBpGYv/rtP/rtP/rtBZDYRdEYRpGYoyYi//zuP/rtBZEYRZDYRdEYRZDYAktUBdEYP91XP91W/90XH9aXvRzXBZDYRlEYH5ZXhdEYBdEYTxaXBRCYf/PRsitTTpZXH9ZXv/OR//ORsisTTpWXf/NR//ASsiYUjpUXv+/Sv+xTf+yTciXUjxVXf+wTv+xTv/NRv/NRf/Zcf/rtf/ehf/jmv/CUv+vTP+wTP+wTf/rtP/psP/dm//RiP/Hdf/qs+/grv/stHeJg/DgrhZDYAAAAG+4r2sAAABrdFJOUwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAem+76zVMDtOcftswftvkftuwftv4fth+2th+2th+2Hh+2H7Yfth8XtHb+I9iCKt8Cjf60HzPm/tl1FwSZ4IIiATzs544pCKTtmTIDUuGlOwV/kqTKCwAAAAFiS0dEAIgFHUgAAAAJcEhZcwAADdcAAA3XAUIom3gAAAAHdElNRQfqBxgEGgWbyJesAAABOElEQVQ4y2NgwA8YGSWlpGVk5eQJq1PIBgJFOfzqmJiVlLPBQAWvOhZWVbWcXLBCdbzqWDQ08/IhKrXwqtPWKSgsAqvUlcKtjo1dT7+4BKpSQRK3OjYDw9IyqEojSUbc6oxNyisqwSqrTM0YGXGrM6+uKa+tKyspKdC04MCrrr6mvqGxqaxEx5KFk4C65pbWtnZ9SxYWguo6WlqsrLmIUNfZaWPLzUOMOjt7Xt5RdaPq8Khj4HNw7CJGHb+Ak3M3EeoY+F1ce7qJUcfv1tvXRVgdA7+7R2//hJaJkyYTUOfpNWXK1GnTZ3j7+OJTJyjk5z9z5pTegMCgYGE86hhYQkJnzZ45JSw8IlKEAR8QjYqeMzcmNs6TnwE/iE+Yl5iUnEJIGQNDalp6RqYYQWUMDFmp8eISRKgDAHlUvFaI+KI/AAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAAABJRU5ErkJggg==" style="width:16px;height:16px;"/></button>
@@ -1403,8 +1418,8 @@ function renderMgmt(){
         <div class="efield"><label>分類</label><select id="ecat-${idx}">${categories.map(c=>`<option value="${c.id}"${c.id===item.cat?' selected':''}>${c.emoji} ${c.name}</option>`).join('')}<option value=""${!item.cat?' selected':''}>無分類</option></select></div>
       </div>
       <div class="erow">
-        <div class="efield"><label>售價</label><input type="number" id="ep-${idx}" value="${item.price}"/></div>
-        <div class="efield"><label>成本</label><input type="number" id="ec-${idx}" value="${item.cost}"/></div>
+        <div class="efield"><label>售價</label><input type="number" id="ep-${idx}" value="${item.price||0}"/></div>
+        <div class="efield"><label>成本</label><input type="number" id="ec-${idx}" value="${item.cost||0}"/></div>
       </div>
       <div class="erow">
         <div class="efield" style="grid-column:1/-1"><label>備註</label><input id="eu-${idx}" placeholder="備註（選填）" value="${item.unit}"/></div>
@@ -1419,8 +1434,10 @@ function toggleEdit(i){document.getElementById('ef-'+i).classList.toggle('open')
 function saveEdit(i){
   menuData[i].name=document.getElementById('en-'+i).value;
   menuData[i].unit=document.getElementById('eu-'+i).value;
-  menuData[i].price=parseInt(document.getElementById('ep-'+i).value);
-  menuData[i].cost=parseInt(document.getElementById('ec-'+i).value);
+  const newPrice=parseInt(document.getElementById('ep-'+i).value);
+  const newCost=parseInt(document.getElementById('ec-'+i).value);
+  menuData[i].price=isNaN(newPrice)?0:newPrice;
+  menuData[i].cost=isNaN(newCost)?0:newCost;
   mP[menuData[i].id]=menuData[i].price;mC[menuData[i].id]=menuData[i].cost;
   const catSel=document.getElementById('ecat-'+i);
   if(catSel&&catSel.value!==menuData[i].cat){
@@ -1662,6 +1679,7 @@ function initReport(){
   ['dp-s-date','dp-r-end'].forEach(id=>document.getElementById(id).value=ty);
   ['dp-s-text','dp-r-end-t'].forEach(id=>document.getElementById(id).value=ty);
   document.getElementById('dp-r-start').value=ms;document.getElementById('dp-r-start-t').value=ms;
+  ['dp-s-date','dp-r-start','dp-r-end'].forEach(updateDateLabel);
   renderReport('today');
 }
 function setRMode(mode,el){
@@ -1670,8 +1688,9 @@ function setRMode(mode,el){
   document.getElementById('dp-range').classList.toggle('show',mode==='range');
   if(mode!=='single'&&mode!=='range')renderReport(mode);
 }
-function syncDT(dId,tId){const v=document.getElementById(dId).value;if(v)document.getElementById(tId).value=v;}
-function syncTD(tId,dId){const v=document.getElementById(tId).value.trim();if(/^\d{4}-\d{2}-\d{2}$/.test(v))document.getElementById(dId).value=v;}
+function syncDT(dId,tId){const v=document.getElementById(dId).value;if(v)document.getElementById(tId).value=v;updateDateLabel(dId);}
+function updateDateLabel(dId){const lbl=document.getElementById(dId+'-lbl');if(lbl)lbl.textContent=document.getElementById(dId).value||'';}
+function syncTD(tId,dId){const v=document.getElementById(tId).value.trim();if(/^\d{4}-\d{2}-\d{2}$/.test(v)){document.getElementById(dId).value=v;updateDateLabel(dId);}}
 function getDV(dId,tId){
   const d=document.getElementById(dId)?document.getElementById(dId).value:'';
   if(d&&/^\d{4}-\d{2}-\d{2}$/.test(d))return d;
@@ -1680,7 +1699,7 @@ function getDV(dId,tId){
   return '';
 }
 function applyFilter(){
-  ['dp-s-text','dp-r-start-t','dp-r-end-t'].forEach(tid=>{const tv=document.getElementById(tid);if(!tv)return;const v=tv.value.trim(),did=tid.replace('-t','').replace('-text','');const del=document.getElementById(did);if(del&&v&&/^\d{4}-\d{2}-\d{2}$/.test(v))del.value=v;});
+  ['dp-s-text','dp-r-start-t','dp-r-end-t'].forEach(tid=>{const tv=document.getElementById(tid);if(!tv)return;const v=tv.value.trim(),did=tid.replace('-t','').replace('-text','');const del=document.getElementById(did);if(del&&v&&/^\d{4}-\d{2}-\d{2}$/.test(v)){del.value=v;updateDateLabel(did);}});
   renderReport(rMode);
 }
 function csvCell(v){const s=String(v==null?'':v);return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;}
