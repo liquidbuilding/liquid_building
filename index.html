@@ -742,14 +742,19 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 
   .sheet{width:480px;}
 
-  .mgmt-scroll{max-width:900px;margin:0 auto;}
-  .orders-scroll{max-width:900px;margin:0 auto;}
-  .report-scroll{max-width:1000px;margin:0 auto;}
+  .mgmt-scroll{width:100%;max-width:1400px;margin:0 auto;box-sizing:border-box;}
+  .orders-scroll{width:100%;max-width:1300px;margin:0 auto;box-sizing:border-box;}
+  .report-scroll{width:100%;max-width:1400px;margin:0 auto;box-sizing:border-box;}
+  .mgmt-scroll{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;align-content:start;}
+  .mgmt-scroll .edit-form{grid-column:1/-1;}
 }
 
 /* ── 超寬螢幕（≥1440px）：內容整體置中，避免過度延展 ── */
 @media (min-width:1440px){
   .menu-list{grid-template-columns:repeat(4,1fr);max-width:1200px;}
+  .mgmt-scroll{grid-template-columns:repeat(3,1fr);max-width:1700px;}
+  .report-scroll{max-width:1600px;}
+  .orders-scroll{max-width:1500px;}
 }
 </style>
 </head>
