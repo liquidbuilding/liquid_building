@@ -730,7 +730,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   .topbar-name{font-size:19px;}
   .date-bar{padding:10px 32px;}
   .cat-strip{padding-left:32px;padding-right:32px;}
-  .menu-list{grid-template-columns:repeat(3,1fr);gap:12px;max-width:1020px;margin:0 auto;padding-left:32px;padding-right:32px;}
+  .menu-list{grid-template-columns:repeat(3,1fr);gap:12px;max-width:1440px;margin:0 auto;padding-left:32px;padding-right:32px;}
   .mcard-img{height:130px;}
   .mcard-body{padding:11px 13px 11px;}
   .mcard-name{font-size:13.5px;}
@@ -751,10 +751,18 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 
 /* ── 超寬螢幕（≥1440px）：內容整體置中，避免過度延展 ── */
 @media (min-width:1440px){
-  .menu-list{grid-template-columns:repeat(4,1fr);max-width:1200px;}
+  .menu-list{grid-template-columns:repeat(4,1fr);max-width:1900px;}
   .mgmt-scroll{grid-template-columns:repeat(3,1fr);max-width:1700px;}
   .report-scroll{max-width:1600px;}
   .orders-scroll{max-width:1500px;}
+}
+
+/* ── 超大螢幕（≥1900px）：再多一欄，充分利用寬螢幕 ── */
+@media (min-width:1900px){
+  .menu-list{grid-template-columns:repeat(5,1fr);max-width:2300px;}
+  .mgmt-scroll{max-width:2000px;}
+  .report-scroll{max-width:1900px;}
+  .orders-scroll{max-width:1800px;}
 }
 </style>
 </head>
