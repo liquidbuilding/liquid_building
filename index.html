@@ -587,10 +587,20 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .report-scroll::-webkit-scrollbar{display:none;}
 .report-banner{
   background:var(--blue);color:white;
-  border-radius:var(--r);padding:11px 20px;margin-bottom:12px;
-  display:flex;align-items:center;justify-content:space-between;
+  border-radius:var(--r);padding:11px 14px;margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
   box-shadow:0 6px 24px rgba(67,86,224,.35);
 }
+.rb-mid{flex:1;min-width:0;display:flex;align-items:center;justify-content:space-between;}
+.rb-nav-btn{
+  flex-shrink:0;width:30px;height:30px;border-radius:50%;
+  background:rgba(255,255,255,.16);border:none;color:white;
+  font-size:18px;font-weight:900;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;line-height:1;
+}
+.rb-nav-btn:active{background:rgba(255,255,255,.32);}
+.rb-nav-btn:disabled{opacity:.25;cursor:default;}
+.rb-nav-btn.hide{visibility:hidden;}
 .rb-date{font-family:'Noto Serif TC',serif;font-size:18px;font-weight:900;color:white;line-height:1;}
 .rb-sub{font-size:9.5px;color:rgba(255,255,255,.7);letter-spacing:2px;text-transform:uppercase;margin-top:3px;font-weight:600;}
 .rb-dow{font-size:22px;color:rgba(255,255,255,.2);line-height:1;font-weight:900;}
@@ -712,6 +722,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 
   .cart-footer{padding:14px 24px;}
   .mgmt-scroll,.orders-scroll,.report-scroll{padding-left:12px;padding-right:12px;}
+  .stat-grid{grid-template-columns:repeat(3,1fr);}
+  .stat-card.profit{grid-column:auto;}
 
   /* 彈窗在較大螢幕改為置中的對話框樣式，而非手機的下滑式選單 */
   .overlay{align-items:center;padding:24px;}
@@ -955,8 +967,12 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   </div>
   <div class="report-scroll">
     <div class="report-banner">
-      <div><div class="rb-date" id="rbDate">—</div><div class="rb-sub">TODAY · 今日日期</div></div>
-      <div class="rb-dow" id="rbDow">—</div>
+      <button class="rb-nav-btn" id="rbPrev" onclick="shiftReportDay(-1)" aria-label="前一天">‹</button>
+      <div class="rb-mid">
+        <div><div class="rb-date" id="rbDate">—</div><div class="rb-sub" id="rbSub">TODAY · 今日日期</div></div>
+        <div class="rb-dow" id="rbDow">—</div>
+      </div>
+      <button class="rb-nav-btn" id="rbNext" onclick="shiftReportDay(1)" aria-label="次一天">›</button>
     </div>
     <button class="export-btn" onclick="exportExcel()">📊 匯出 Excel（目前區間）</button>
     <div class="export-hint">匯出 CSV 檔，Excel 直接開啟；每列一個品項，含<b>分類</b>與<b>每筆收益</b>欄位，可在 Excel 內排序、篩選、樞紐分析。</div>
@@ -1915,6 +1931,7 @@ function doDelOrder(){if(pendingDelOi===null)return;orderHistory.splice(pendingD
 function addNewOrder(dateStr){const p=dateStr.split('/');const ts=new Date(+p[0],+p[1]-1,+p[2],12,0,0);const m=menuData[0];orderHistory.unshift({ts,total:m.price,cost:m.cost,profit:m.price-m.cost,items:[{name:m.name,qty:1,price:m.price,cost:m.cost}],sel:false,status:'pending',paid:false});renderOrders();showToast('✅ 已新增訂單','#27AE60');setTimeout(()=>{const c=document.querySelector('.ocard');if(c)c.classList.add('expanded');},60);}
 
 let rMode='today';
+let reportDayOffset=0;
 let reportCatFilter=new Set();
 function itemCat(name){const m=menuData.find(x=>x.name===name);return m?m.cat:'';}
 function toggleRCat(catId,el){
@@ -1935,22 +1952,42 @@ function renderRCatPills(){
   strip.innerHTML=`<div class="rcat-pill${allActive?' active':''}" onclick="toggleRCat('',this)">全部</div>`+
     categories.map(c=>`<div class="rcat-pill${reportCatFilter.has(c.id)?' active':''}" onclick="toggleRCat('${c.id}',this)">${c.emoji} ${c.name}</div>`).join('');
 }
+function updateReportBanner(){
+  const now=new Date();
+  const base=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const eff=new Date(base.getTime()+reportDayOffset*86400000);
+  document.getElementById('rbDate').textContent=eff.toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('rbDow').textContent='週'+DAYS[eff.getDay()];
+  const sub=document.getElementById('rbSub');
+  if(sub)sub.textContent=reportDayOffset===0?'TODAY · 今日日期':'HISTORY · 點右側箭頭返回今日';
+  const prev=document.getElementById('rbPrev'),next=document.getElementById('rbNext');
+  const onToday=(rMode==='today');
+  if(prev){prev.classList.toggle('hide',!onToday);}
+  if(next){next.classList.toggle('hide',!onToday);next.disabled=(reportDayOffset>=0);}
+}
+function shiftReportDay(delta){
+  if(rMode!=='today')return;
+  if(reportDayOffset+delta>0)return;
+  reportDayOffset+=delta;
+  updateReportBanner();
+  renderReport('today');
+}
 function initReport(){
   const now=new Date();
-  document.getElementById('rbDate').textContent=now.toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric'});
-  document.getElementById('rbDow').textContent='週'+DAYS[now.getDay()];
   const ty=dateToYmd(now),ms=`${now.getFullYear()}-${pad(now.getMonth()+1)}-01`;
   document.getElementById('dp-s-date').value=ty;
   document.getElementById('dp-r-end').value=ty;
   document.getElementById('dp-r-start').value=ms;
   ['dp-s-date','dp-r-start','dp-r-end'].forEach(updateDateLabel);
   renderRCatPills();
+  updateReportBanner();
   renderReport('today');
 }
 function setRMode(mode,el){
   rMode=mode;document.querySelectorAll('.rtab').forEach(t=>t.classList.remove('active'));el.classList.add('active');
   document.getElementById('dp-single').classList.toggle('show',mode==='single');
   document.getElementById('dp-range').classList.toggle('show',mode==='range');
+  reportDayOffset=0;updateReportBanner();
   if(mode!=='single'&&mode!=='range')renderReport(mode);
 }
 function updateDateLabel(dId){const lbl=document.getElementById(dId+'-lbl');if(lbl)lbl.textContent=document.getElementById(dId).value||'';}
@@ -1994,7 +2031,7 @@ function filterExpensesByMode(mode){
   const now=new Date();const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   const all=[];
   Object.keys(expenseData).forEach(key=>{(expenseData[key]||[]).forEach(e=>all.push({...e,date:ymdToDate(key)}));});
-  if(mode==='today'){const tmr=new Date(today.getTime()+86400000);return all.filter(e=>e.date>=today&&e.date<tmr);}
+  if(mode==='today'){const eff=new Date(today.getTime()+reportDayOffset*86400000);const tmr=new Date(eff.getTime()+86400000);return all.filter(e=>e.date>=eff&&e.date<tmr);}
   if(mode==='month')return all.filter(e=>e.date.getFullYear()===now.getFullYear()&&e.date.getMonth()===now.getMonth());
   if(mode==='year')return all.filter(e=>e.date.getFullYear()===now.getFullYear());
   if(mode==='single'){const v=getDV('dp-s-date');if(!v)return[];const sel=ymdToDate(v),e2=new Date(sel.getTime()+86400000);return all.filter(e=>e.date>=sel&&e.date<e2);}
@@ -2003,7 +2040,7 @@ function filterExpensesByMode(mode){
 }
 function filterByMode(mode){
   const now=new Date();const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  if(mode==='today'){const tmr=new Date(today.getTime()+86400000);return orderHistory.filter(o=>{const d=new Date(o.ts);return d>=today&&d<tmr;});}
+  if(mode==='today'){const eff=new Date(today.getTime()+reportDayOffset*86400000);const tmr=new Date(eff.getTime()+86400000);return orderHistory.filter(o=>{const d=new Date(o.ts);return d>=eff&&d<tmr;});}
   if(mode==='month')return orderHistory.filter(o=>{const d=new Date(o.ts);return d.getFullYear()===now.getFullYear()&&d.getMonth()===now.getMonth();});
   if(mode==='year') return orderHistory.filter(o=>new Date(o.ts).getFullYear()===now.getFullYear());
   if(mode==='single'){const v=getDV('dp-s-date');if(!v){showToast('請輸入查詢日期 YYYY-MM-DD','#E05050');return[];}const sel=ymdToDate(v),e=new Date(sel.getTime()+86400000);return orderHistory.filter(o=>{const d=new Date(o.ts);return d>=sel&&d<e;});}
