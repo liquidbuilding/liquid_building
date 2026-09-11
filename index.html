@@ -401,16 +401,17 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .cat-mgmt-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
 .cat-mgmt-hdr>span{font-size:13px;font-weight:800;color:var(--text);letter-spacing:.5px;}
 .cat-add-btn{
-  background:var(--blue-lt);color:var(--blue);border:none;border-radius:var(--rpill);
+  background:var(--blue-lt);color:var(--blue);border:none;border-radius:var(--r-xs);
   font-size:12px;font-weight:700;padding:6px 12px;cursor:pointer;
 }
 .cat-mgmt-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;}
 .cat-mgmt-chip{
   display:flex;align-items:center;gap:5px;
-  background:var(--bg);border:1.5px solid var(--border);border-radius:var(--rpill);
+  background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-xs);
   padding:5px 6px 5px 10px;font-size:12px;font-weight:700;color:var(--text);
 }
 .cat-mgmt-chip.armed{background:var(--red-lt);border-color:var(--red);}
+#catManageOvl .sbtn{border-radius:var(--r-xs);}
 .cat-mgmt-emoji{font-size:13px;}
 .cat-mgmt-icon{
   width:22px;height:22px;border-radius:50%;border:none;background:var(--white);
@@ -1618,8 +1619,8 @@ function renderCatMgmtBlock(){
   return `<div class="cat-mgmt-list">${categories.map(c=>`
       <div class="cat-mgmt-chip${deleteArmedCat===c.id?' armed':''}">
         <span class="cat-mgmt-emoji">${c.emoji}</span><span class="cat-mgmt-name">${c.name}</span>
-        <button class="cat-mgmt-icon" onclick="openEditCat('${c.id}')">${editIcon(15)}</button>
-        <button class="cat-mgmt-icon" onclick="deleteCatPrompt('${c.id}')">${deleteArmedCat===c.id?'✓':trashIcon(15)}</button>
+        <button class="cat-mgmt-icon" onclick="openEditCat('${c.id}')">${editIcon(11)}</button>
+        <button class="cat-mgmt-icon" onclick="deleteCatPrompt('${c.id}')">${deleteArmedCat===c.id?'✓':trashIcon(11)}</button>
       </div>`).join('')}
     </div>`;
 }
