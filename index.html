@@ -147,6 +147,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   border:1.5px solid var(--border2);background:var(--white);
   font-size:10px;font-weight:700;color:var(--text2);
   cursor:pointer;transition:all .2s;white-space:nowrap;
+  display:inline-flex;align-items:center;justify-content:center;
+  text-align:center;line-height:1;
 }
 .cat-pill.active{background:var(--blue);border-color:var(--blue);color:white;box-shadow:0 4px 12px rgba(67,86,224,.3);}
 .rcat-strip{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-bottom:12px;padding-bottom:2px;}
@@ -156,6 +158,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   border:1.5px solid var(--border2);background:var(--white);
   font-size:11px;font-weight:700;color:var(--text2);
   cursor:pointer;transition:all .2s;white-space:nowrap;
+  display:inline-flex;align-items:center;justify-content:center;
+  text-align:center;line-height:1;
 }
 .rcat-pill.active{background:var(--blue);border-color:var(--blue);color:white;box-shadow:0 4px 12px rgba(67,86,224,.3);}
 
@@ -838,10 +842,10 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   </div>
 
   <div class="cat-strip">
-    <div class="cat-pill active" data-cat="全部" onclick="filterCat('全部',this)">🌊 全部</div>
-    <div class="cat-pill" data-cat="生蠔" onclick="filterCat('生蠔',this)">🦪 生蠔系列</div>
-    <div class="cat-pill" data-cat="主食" onclick="filterCat('主食',this)">🍚 主食</div>
-    <div class="cat-pill" data-cat="輕食" onclick="filterCat('輕食',this)">🥖 輕食</div>
+    <div class="cat-pill active" data-cat="全部" onclick="filterCat('全部',this)">全部</div>
+    <div class="cat-pill" data-cat="生蠔" onclick="filterCat('生蠔',this)">生蠔系列</div>
+    <div class="cat-pill" data-cat="主食" onclick="filterCat('主食',this)">主食</div>
+    <div class="cat-pill" data-cat="輕食" onclick="filterCat('輕食',this)">輕食</div>
   </div>
 
   <div class="scroll">
@@ -1283,8 +1287,8 @@ function renderCatPills(){
   if(strip){
     const activeCat=strip.querySelector('.cat-pill.active');
     const activeId=activeCat?activeCat.dataset.cat:'全部';
-    strip.innerHTML=`<div class="cat-pill${activeId==='全部'?' active':''}" data-cat="全部" onclick="filterCat('全部',this)">🌊 全部</div>`+
-      categories.map(c=>`<div class="cat-pill${activeId===c.id?' active':''}" data-cat="${c.id}" onclick="filterCat('${c.id}',this)">${c.emoji} ${c.name}</div>`).join('');
+    strip.innerHTML=`<div class="cat-pill${activeId==='全部'?' active':''}" data-cat="全部" onclick="filterCat('全部',this)">全部</div>`+
+      categories.map(c=>`<div class="cat-pill${activeId===c.id?' active':''}" data-cat="${c.id}" onclick="filterCat('${c.id}',this)">${c.name}</div>`).join('');
   }
   if(document.getElementById('rcatStrip'))renderRCatPills();
 }
@@ -1985,7 +1989,7 @@ function renderRCatPills(){
   reportCatFilter.forEach(id=>{if(!validIds.has(id))reportCatFilter.delete(id);});
   const allActive=reportCatFilter.size===0;
   strip.innerHTML=`<div class="rcat-pill${allActive?' active':''}" onclick="toggleRCat('',this)">全部</div>`+
-    categories.map(c=>`<div class="rcat-pill${reportCatFilter.has(c.id)?' active':''}" onclick="toggleRCat('${c.id}',this)">${c.emoji} ${c.name}</div>`).join('');
+    categories.map(c=>`<div class="rcat-pill${reportCatFilter.has(c.id)?' active':''}" onclick="toggleRCat('${c.id}',this)">${c.name}</div>`).join('');
 }
 function updateReportBanner(){
   const now=new Date();
