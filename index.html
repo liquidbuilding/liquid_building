@@ -490,23 +490,40 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .ai-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 
 /* ── IMAGE CROP ── */
-.crop-sheet{width:min(520px,calc(100vw - 28px));}
-.crop-help{font-size:11px;color:var(--text3);font-weight:600;margin:-2px 0 10px;text-align:center;}
+.crop-sheet{width:min(680px,calc(100vw - 28px));}
+.crop-sheet .crop-help{font-size:12px;color:var(--text2);font-weight:600;margin:0 0 10px;text-align:left;}
 .crop-stage{
-  width:100%;aspect-ratio:8/3;background:#111827;border-radius:var(--r-sm);
-  overflow:hidden;position:relative;touch-action:none;cursor:grab;
+  width:100%;aspect-ratio:3/2;background:#111827;border-radius:var(--r-sm);
+  overflow:hidden;position:relative;touch-action:none;cursor:move;user-select:none;
   box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);
 }
 .crop-stage.dragging{cursor:grabbing;}
-.crop-stage canvas{width:100%;height:100%;display:block;}
-.crop-stage::after{
-  content:'';position:absolute;inset:0;pointer-events:none;
-  box-shadow:inset 0 0 0 2px rgba(255,255,255,.9),inset 0 0 0 999px rgba(0,0,0,.04);
-  border-radius:var(--r-sm);
+.crop-stage canvas{width:100%;height:100%;display:block;pointer-events:none;}
+.crop-selection{
+  position:absolute;z-index:2;box-sizing:border-box;
+  border:2px solid white;box-shadow:0 0 0 9999px rgba(9,13,25,.55),0 0 0 1px rgba(67,86,224,.85);
+  cursor:move;touch-action:none;
 }
+.crop-grid{position:absolute;inset:0;pointer-events:none;}
+.crop-grid::before,.crop-grid::after{content:'';position:absolute;pointer-events:none;}
+.crop-grid::before{left:33.333%;top:0;width:33.333%;height:100%;border-left:1px solid rgba(255,255,255,.55);border-right:1px solid rgba(255,255,255,.55);}
+.crop-grid::after{left:0;top:33.333%;width:100%;height:33.333%;border-top:1px solid rgba(255,255,255,.55);border-bottom:1px solid rgba(255,255,255,.55);}
+.crop-handle{
+  position:absolute;width:20px;height:20px;background:white;
+  border:2px solid var(--blue);border-radius:5px;box-shadow:0 2px 8px rgba(0,0,0,.35);
+  touch-action:none;box-sizing:border-box;
+}
+.crop-handle.nw{left:-11px;top:-11px;cursor:nwse-resize;}
+.crop-handle.ne{right:-11px;top:-11px;cursor:nesw-resize;}
+.crop-handle.sw{left:-11px;bottom:-11px;cursor:nesw-resize;}
+.crop-handle.se{right:-11px;bottom:-11px;cursor:nwse-resize;}
+.crop-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 2px 0;}
+.crop-toolbar span{font-size:11px;color:var(--text3);font-weight:600;line-height:1.4;}
+.crop-reset{border:1.5px solid var(--border2);background:var(--bg);color:var(--blue);border-radius:var(--rpill);padding:6px 12px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;}
 .crop-zoom{display:flex;align-items:center;gap:10px;margin:14px 2px 4px;}
 .crop-zoom span{font-size:11px;color:var(--text3);font-weight:700;white-space:nowrap;}
 .crop-zoom input{width:100%;accent-color:var(--blue);}
+.crop-sheet .sheet-btns{margin-top:14px;}
 
 /* ── ORDERS ── */
 .orders-toolbar{
@@ -1184,12 +1201,21 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   </div>
 </div>
 <div class="overlay" id="imageCropOvl">
-  <div class="sheet crop-sheet">
-    <span class="sheet-ico">✂️</span><h3>裁切菜單照片</h3>
-    <p class="crop-help">拖曳照片調整位置，使用下方滑桿縮放</p>
-    <div class="crop-stage" id="cropStage"><canvas id="cropCanvas" width="960" height="360"></canvas></div>
+  <div class="sheet crop-sheet" role="dialog" aria-label="照片裁切">
+    <p class="crop-help">拖曳白框選擇要保留的範圍，拖動四個角可調整裁切大小。</p>
+    <div class="crop-stage" id="cropStage">
+      <canvas id="cropCanvas" width="960" height="640"></canvas>
+      <div class="crop-selection" id="cropSelection">
+        <div class="crop-grid"></div>
+        <span class="crop-handle nw" data-handle="nw"></span>
+        <span class="crop-handle ne" data-handle="ne"></span>
+        <span class="crop-handle sw" data-handle="sw"></span>
+        <span class="crop-handle se" data-handle="se"></span>
+      </div>
+    </div>
+    <div class="crop-toolbar"><span>框內：移動裁切範圍　框外：移動照片</span><button class="crop-reset" type="button" onclick="resetImageCrop()">↺ 重設</button></div>
     <div class="crop-zoom">
-      <span>縮小</span><input id="cropZoom" type="range" min="100" max="300" value="100" step="1" oninput="setCropZoom(this.value)"/><span>放大</span>
+      <span>照片縮小</span><input id="cropZoom" type="range" min="100" max="300" value="100" step="1" oninput="setCropZoom(this.value)"/><span>照片放大</span>
     </div>
     <div class="sheet-btns"><button class="sbtn cancel" onclick="cancelImageCrop()">取消</button><button class="sbtn confirm" onclick="applyImageCrop()">✓ 套用裁切</button></div>
   </div>
@@ -1212,8 +1238,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   <div class="sheet"><span class="sheet-ico">🏷️</span><h3 id="ac-title">新增分類</h3>
     <input type="hidden" id="ac-edit-id" value=""/>
     <div class="add-item-form">
-      <div class="ai-field"><label>圖示（emoji，選填）</label><input id="ac-emoji" type="text" placeholder="例：🍰" maxlength="4"/></div>
       <div class="ai-field"><label>分類名稱 *</label><input id="ac-name" type="text" placeholder="例：甜點系列" maxlength="20"/></div>
+      <div class="ai-field"><label>圖示（emoji，選填）</label><input id="ac-emoji" type="text" placeholder="例：🍰" maxlength="4"/></div>
     </div>
     <div class="sheet-btns"><button class="sbtn cancel" onclick="closeOvl('addCatOvl')">取消</button><button class="sbtn confirm" id="ac-save-btn" onclick="doSaveCat()">＋ 新增分類</button></div>
   </div>
@@ -1353,6 +1379,7 @@ let categories=[
 ];
 
 function catNextId(){let i=1;while(categories.find(c=>c.id==='cat_'+i))i++;return 'cat_'+i;}
+function catDisplayName(c){return c?(c.emoji?c.emoji+' ':'')+c.name:'無分類';}
 
 function renderCatPills(){
   const strip=document.querySelector('.cat-strip');
@@ -1372,7 +1399,7 @@ function ensureCatSection(catId){
   if(!scroll||!c)return;
   const div=document.createElement('div');
   div.id='sec-'+catId;
-  div.innerHTML=`<div class="sec-hdr"><span class="sec-hdr-label">${c.emoji} ${c.name}</span><div class="sec-hdr-line"></div></div><div class="menu-list" id="grid-${catId}"></div>`;
+  div.innerHTML=`<div class="sec-hdr"><span class="sec-hdr-label">${catDisplayName(c)}</span><div class="sec-hdr-line"></div></div><div class="menu-list" id="grid-${catId}"></div>`;
   const anchor=document.querySelector('.pos-tools-row')||document.getElementById('customItemSecHdr');
   if(anchor)scroll.insertBefore(div,anchor);else scroll.appendChild(div);
 }
@@ -1381,7 +1408,7 @@ function updateAiCatOptions(){
   const sel=document.getElementById('ai-cat');
   if(!sel)return;
   const cur=sel.value;
-  sel.innerHTML=categories.map(c=>`<option value="${c.id}">${c.emoji} ${c.name}</option>`).join('')+`<option value="">無分類</option>`;
+  sel.innerHTML=categories.map(c=>`<option value="${c.id}">${catDisplayName(c)}</option>`).join('')+`<option value="">無分類</option>`;
   if(cur==='' || categories.find(c=>c.id===cur))sel.value=cur;
 }
 
@@ -1399,7 +1426,7 @@ function openEditCat(catId){
   document.getElementById('ac-title').textContent='編輯分類';
   document.getElementById('ac-save-btn').textContent='✓ 儲存';
   document.getElementById('ac-edit-id').value=catId;
-  document.getElementById('ac-emoji').value=c.emoji;
+  document.getElementById('ac-emoji').value=c.emoji||'';
   document.getElementById('ac-name').value=c.name;
   document.getElementById('addCatOvl').classList.add('show');
 }
@@ -1408,7 +1435,7 @@ function refreshCatManageIfOpen(){
   if(ovl&&ovl.classList.contains('show')){document.getElementById('catManageList').innerHTML=renderCatMgmtBlock();}
 }
 function doSaveCat(){
-  const emoji=document.getElementById('ac-emoji').value.trim()||'🍽️';
+  const emoji=document.getElementById('ac-emoji').value.trim();
   const name=document.getElementById('ac-name').value.trim();
   const editId=document.getElementById('ac-edit-id').value;
   if(!name){showToast('請輸入分類名稱','#E05050');return;}
@@ -1417,7 +1444,7 @@ function doSaveCat(){
     if(c){
       c.name=name;c.emoji=emoji;
       const hdr=document.querySelector('#sec-'+editId+' .sec-hdr-label');
-      if(hdr)hdr.textContent=emoji+' '+name;
+      if(hdr)hdr.textContent=catDisplayName(c);
     }
     closeOvl('addCatOvl');
     renderCatPills();
@@ -1698,6 +1725,7 @@ function resizeImageFile(file,maxSize){
   });
 }
 let cropState=null;
+const CROP_RATIO=8/3,CROP_OUTPUT_WIDTH=960,CROP_OUTPUT_HEIGHT=360;
 function handleImageUpload(idx,input){
   const file=input.files&&input.files[0];
   input.value='';
@@ -1713,42 +1741,87 @@ function handleImageUpload(idx,input){
   reader.onerror=function(){showToast('圖片讀取失敗','#E05050');};
   reader.readAsDataURL(file);
 }
-function openImageCrop(idx,img){
+function clampNumber(value,min,max){return Math.min(max,Math.max(min,value));}
+function cropCanvasPoint(clientX,clientY){
+  const stage=document.getElementById('cropStage');
   const canvas=document.getElementById('cropCanvas');
-  const minScale=Math.max(canvas.width/img.naturalWidth,canvas.height/img.naturalHeight);
-  const drawW=img.naturalWidth*minScale,drawH=img.naturalHeight*minScale;
-  cropState={idx,img,minScale,zoom:1,x:(canvas.width-drawW)/2,y:(canvas.height-drawH)/2,drag:null};
-  document.getElementById('cropZoom').value='100';
-  document.getElementById('imageCropOvl').classList.add('show');
-  drawImageCrop();
+  const rect=stage.getBoundingClientRect();
+  return {x:(clientX-rect.left)*canvas.width/rect.width,y:(clientY-rect.top)*canvas.height/rect.height};
 }
-function clampCropPosition(){
+function cropImageMetrics(){
+  if(!cropState)return null;
+  const scale=cropState.baseScale*cropState.zoom;
+  return {scale,x:cropState.imageX,y:cropState.imageY,width:cropState.img.naturalWidth*scale,height:cropState.img.naturalHeight*scale};
+}
+function cropVisibleImageBounds(){
+  const canvas=document.getElementById('cropCanvas');
+  const m=cropImageMetrics();
+  const left=Math.max(0,m.x),top=Math.max(0,m.y);
+  const right=Math.min(canvas.width,m.x+m.width),bottom=Math.min(canvas.height,m.y+m.height);
+  return {left,top,right,bottom,width:Math.max(0,right-left),height:Math.max(0,bottom-top)};
+}
+function resetImageCrop(){
   if(!cropState)return;
   const canvas=document.getElementById('cropCanvas');
-  const scale=cropState.minScale*cropState.zoom;
-  const drawW=cropState.img.naturalWidth*scale,drawH=cropState.img.naturalHeight*scale;
-  cropState.x=Math.min(0,Math.max(canvas.width-drawW,cropState.x));
-  cropState.y=Math.min(0,Math.max(canvas.height-drawH,cropState.y));
+  const img=cropState.img;
+  cropState.baseScale=Math.min(canvas.width/img.naturalWidth,canvas.height/img.naturalHeight);
+  cropState.zoom=1;
+  const drawW=img.naturalWidth*cropState.baseScale,drawH=img.naturalHeight*cropState.baseScale;
+  cropState.imageX=(canvas.width-drawW)/2;
+  cropState.imageY=(canvas.height-drawH)/2;
+  const bounds=cropVisibleImageBounds();
+  let cropW=bounds.width*.84,cropH=cropW/CROP_RATIO;
+  if(cropH>bounds.height*.84){cropH=bounds.height*.84;cropW=cropH*CROP_RATIO;}
+  cropState.crop={x:bounds.left+(bounds.width-cropW)/2,y:bounds.top+(bounds.height-cropH)/2,w:cropW,h:cropH};
+  cropState.action=null;
+  document.getElementById('cropZoom').value='100';
+  drawImageCrop();
+}
+function openImageCrop(idx,img){
+  cropState={idx,img,baseScale:1,zoom:1,imageX:0,imageY:0,crop:null,action:null};
+  document.getElementById('imageCropOvl').classList.add('show');
+  resetImageCrop();
+}
+function clampImageToCrop(){
+  if(!cropState||!cropState.crop)return;
+  const m=cropImageMetrics(),c=cropState.crop;
+  cropState.imageX=Math.min(c.x,Math.max(c.x+c.w-m.width,cropState.imageX));
+  cropState.imageY=Math.min(c.y,Math.max(c.y+c.h-m.height,cropState.imageY));
+}
+function syncCropSelection(){
+  if(!cropState||!cropState.crop)return;
+  const canvas=document.getElementById('cropCanvas');
+  const selection=document.getElementById('cropSelection');
+  const c=cropState.crop;
+  selection.style.left=(c.x/canvas.width*100)+'%';
+  selection.style.top=(c.y/canvas.height*100)+'%';
+  selection.style.width=(c.w/canvas.width*100)+'%';
+  selection.style.height=(c.h/canvas.height*100)+'%';
 }
 function drawImageCrop(){
   if(!cropState)return;
-  clampCropPosition();
+  clampImageToCrop();
   const canvas=document.getElementById('cropCanvas');
   const ctx=canvas.getContext('2d');
-  const scale=cropState.minScale*cropState.zoom;
+  const m=cropImageMetrics();
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.drawImage(cropState.img,cropState.x,cropState.y,cropState.img.naturalWidth*scale,cropState.img.naturalHeight*scale);
+  ctx.fillStyle='#111827';ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+  ctx.drawImage(cropState.img,m.x,m.y,m.width,m.height);
+  syncCropSelection();
 }
 function setCropZoom(value){
-  if(!cropState)return;
-  const canvas=document.getElementById('cropCanvas');
-  const oldScale=cropState.minScale*cropState.zoom;
-  const sourceCenterX=(canvas.width/2-cropState.x)/oldScale;
-  const sourceCenterY=(canvas.height/2-cropState.y)/oldScale;
-  cropState.zoom=Math.max(1,Number(value)/100);
-  const newScale=cropState.minScale*cropState.zoom;
-  cropState.x=canvas.width/2-sourceCenterX*newScale;
-  cropState.y=canvas.height/2-sourceCenterY*newScale;
+  if(!cropState||!cropState.crop)return;
+  const oldScale=cropState.baseScale*cropState.zoom,c=cropState.crop;
+  const centerX=c.x+c.w/2,centerY=c.y+c.h/2;
+  const sourceCenterX=(centerX-cropState.imageX)/oldScale;
+  const sourceCenterY=(centerY-cropState.imageY)/oldScale;
+  const minForCrop=Math.max(1,c.w/(cropState.img.naturalWidth*cropState.baseScale),c.h/(cropState.img.naturalHeight*cropState.baseScale));
+  cropState.zoom=clampNumber(Number(value)/100,minForCrop,3);
+  document.getElementById('cropZoom').value=String(Math.round(cropState.zoom*100));
+  const newScale=cropState.baseScale*cropState.zoom;
+  cropState.imageX=centerX-sourceCenterX*newScale;
+  cropState.imageY=centerY-sourceCenterY*newScale;
   drawImageCrop();
 }
 function cancelImageCrop(){
@@ -1756,11 +1829,20 @@ function cancelImageCrop(){
   cropState=null;
 }
 function applyImageCrop(){
-  if(!cropState)return;
-  const idx=cropState.idx;
-  const dataUrl=document.getElementById('cropCanvas').toDataURL('image/jpeg',0.88);
-  const item=menuData[idx];
+  if(!cropState||!cropState.crop)return;
+  const idx=cropState.idx,item=menuData[idx];
   if(!item){cancelImageCrop();return;}
+  const m=cropImageMetrics(),c=cropState.crop;
+  const sourceX=clampNumber((c.x-m.x)/m.scale,0,cropState.img.naturalWidth);
+  const sourceY=clampNumber((c.y-m.y)/m.scale,0,cropState.img.naturalHeight);
+  const sourceW=Math.min(c.w/m.scale,cropState.img.naturalWidth-sourceX);
+  const sourceH=Math.min(c.h/m.scale,cropState.img.naturalHeight-sourceY);
+  const output=document.createElement('canvas');
+  output.width=CROP_OUTPUT_WIDTH;output.height=CROP_OUTPUT_HEIGHT;
+  const outputCtx=output.getContext('2d');
+  outputCtx.imageSmoothingEnabled=true;outputCtx.imageSmoothingQuality='high';
+  outputCtx.drawImage(cropState.img,sourceX,sourceY,sourceW,sourceH,0,0,output.width,output.height);
+  const dataUrl=output.toDataURL('image/jpeg',0.88);
   item.img=dataUrl;
   const posImgDiv=document.querySelector('#card-'+item.id+' .mcard-img');
   if(posImgDiv){
@@ -1778,28 +1860,66 @@ function applyImageCrop(){
   renderMgmt();
   showToast('✅ 圖片已裁切並更新','#27AE60');
 }
+function resizeCropFromPointer(handle,point,startCrop){
+  const bounds=cropVisibleImageBounds();
+  let anchorX,anchorY,dirX,dirY;
+  if(handle==='nw'){anchorX=startCrop.x+startCrop.w;anchorY=startCrop.y+startCrop.h;dirX=-1;dirY=-1;}
+  if(handle==='ne'){anchorX=startCrop.x;anchorY=startCrop.y+startCrop.h;dirX=1;dirY=-1;}
+  if(handle==='sw'){anchorX=startCrop.x+startCrop.w;anchorY=startCrop.y;dirX=-1;dirY=1;}
+  if(handle==='se'){anchorX=startCrop.x;anchorY=startCrop.y;dirX=1;dirY=1;}
+  const widthFromX=dirX>0?point.x-anchorX:anchorX-point.x;
+  const widthFromY=(dirY>0?point.y-anchorY:anchorY-point.y)*CROP_RATIO;
+  const useHorizontal=Math.abs(widthFromX-startCrop.w)>=Math.abs(widthFromY-startCrop.w);
+  let newW=useHorizontal?widthFromX:widthFromY;
+  const maxByX=dirX>0?bounds.right-anchorX:anchorX-bounds.left;
+  const maxByY=(dirY>0?bounds.bottom-anchorY:anchorY-bounds.top)*CROP_RATIO;
+  const maxW=Math.max(1,Math.min(maxByX,maxByY));
+  newW=clampNumber(newW,Math.min(160,maxW),maxW);
+  const newH=newW/CROP_RATIO;
+  cropState.crop={x:dirX>0?anchorX:anchorX-newW,y:dirY>0?anchorY:anchorY-newH,w:newW,h:newH};
+}
 function initImageCropInteractions(){
   const stage=document.getElementById('cropStage');
   if(!stage)return;
   stage.addEventListener('pointerdown',function(e){
-    if(!cropState)return;
-    cropState.drag={pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,x:cropState.x,y:cropState.y};
-    stage.setPointerCapture(e.pointerId);stage.classList.add('dragging');
+    if(!cropState||!cropState.crop)return;
+    const target=e.target&&e.target.closest?e.target:null;
+    const handle=target&&target.closest('.crop-handle');
+    const selection=target&&target.closest('#cropSelection');
+    const point=cropCanvasPoint(e.clientX,e.clientY);
+    cropState.action={
+      pointerId:e.pointerId,type:handle?'resize':selection?'move-crop':'pan-image',
+      handle:handle?handle.dataset.handle:'',startX:point.x,startY:point.y,
+      imageX:cropState.imageX,imageY:cropState.imageY,crop:{...cropState.crop}
+    };
+    stage.setPointerCapture(e.pointerId);stage.classList.add('dragging');e.preventDefault();
   });
   stage.addEventListener('pointermove',function(e){
-    if(!cropState||!cropState.drag||cropState.drag.pointerId!==e.pointerId)return;
-    const rect=stage.getBoundingClientRect();
-    const canvas=document.getElementById('cropCanvas');
-    cropState.x=cropState.drag.x+(e.clientX-cropState.drag.startX)*(canvas.width/rect.width);
-    cropState.y=cropState.drag.y+(e.clientY-cropState.drag.startY)*(canvas.height/rect.height);
-    drawImageCrop();
+    const action=cropState&&cropState.action;
+    if(!action||action.pointerId!==e.pointerId)return;
+    const point=cropCanvasPoint(e.clientX,e.clientY),dx=point.x-action.startX,dy=point.y-action.startY;
+    if(action.type==='pan-image'){
+      cropState.imageX=action.imageX+dx;cropState.imageY=action.imageY+dy;
+      clampImageToCrop();
+    }else if(action.type==='move-crop'){
+      const bounds=cropVisibleImageBounds(),c=action.crop;
+      cropState.crop={...c,x:clampNumber(c.x+dx,bounds.left,bounds.right-c.w),y:clampNumber(c.y+dy,bounds.top,bounds.bottom-c.h)};
+    }else resizeCropFromPointer(action.handle,point,action.crop);
+    drawImageCrop();e.preventDefault();
   });
-  const endDrag=function(e){
-    if(!cropState||!cropState.drag||cropState.drag.pointerId!==e.pointerId)return;
-    cropState.drag=null;stage.classList.remove('dragging');
+  const endAction=function(e){
+    if(!cropState||!cropState.action||cropState.action.pointerId!==e.pointerId)return;
+    cropState.action=null;stage.classList.remove('dragging');
+    if(stage.hasPointerCapture(e.pointerId))stage.releasePointerCapture(e.pointerId);
   };
-  stage.addEventListener('pointerup',endDrag);
-  stage.addEventListener('pointercancel',endDrag);
+  stage.addEventListener('pointerup',endAction);
+  stage.addEventListener('pointercancel',endAction);
+  stage.addEventListener('wheel',function(e){
+    if(!cropState)return;
+    const slider=document.getElementById('cropZoom');
+    const next=clampNumber(Number(slider.value)+(e.deltaY<0?5:-5),100,300);
+    setCropZoom(next);e.preventDefault();
+  },{passive:false});
 }
 function getThumb(id){const el=document.querySelector('#card-'+id+' .mcard-img img');return el?el.src:'';}
 function renderMcardPrice(id,item){
@@ -1824,7 +1944,7 @@ function renderMcardPrice(id,item){
 function renderCatMgmtBlock(){
   return `<div class="cat-mgmt-list">${categories.map(c=>`
       <div class="cat-mgmt-chip${deleteArmedCat===c.id?' armed':''}">
-        <span class="cat-mgmt-emoji">${c.emoji}</span><span class="cat-mgmt-name">${c.name}</span>
+        ${c.emoji?`<span class="cat-mgmt-emoji">${c.emoji}</span>`:''}<span class="cat-mgmt-name">${c.name}</span>
         <button class="cat-mgmt-icon" onclick="openEditCat('${c.id}')">${editIcon(11)}</button>
         <button class="cat-mgmt-icon" onclick="deleteCatPrompt('${c.id}')">${deleteArmedCat===c.id?'✓':trashIcon(11)}</button>
       </div>`).join('')}
@@ -1839,21 +1959,21 @@ function renderMgmt(){
     <div class="mgmt-card">
       ${getThumbOrEmoji(item.id)}
       <div class="mgmt-info">
-        <div class="mgmt-name"><span class="mgmt-cat-badge">${(()=>{const c=categories.find(x=>x.id===item.cat);return c?`${c.emoji} ${c.name}`:'無分類';})()}</span>${item.name}</div>
+        <div class="mgmt-name"><span class="mgmt-cat-badge">${catDisplayName(categories.find(x=>x.id===item.cat))}</span>${item.name}</div>
         <div class="mgmt-meta">${item.unit} | 售 <b>${item.specialPrice?`<s style="color:var(--text3);font-weight:400;">$${item.price||0}</s> $${item.specialPrice}`:'$'+(item.price||0)}</b> | <span style="color:#E05050;font-weight:700;">成本 $${item.cost||0}</span></div>
       </div>
       <div class="mgmt-actions">
         <button class="mgmt-edit-btn" onclick="toggleEdit(${idx})"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAHgUExURQAAAP91XP94W/90XBdEYaZiXf/ORwAyZERNYBRDYTRRXv+tTv/1PP+xTv/Ybv/rtP/XbP//zf/ttf/Wj//tuRdEYA04WhZDYRY/Xv91XP91XP91XP91XP91XP91XP91XP91XP91XP91W/91XP91XHZYXvByXP91XBRDYRxFYP91XBdEYRdEYf91XCVMXxVDYf/YRMasTf90XP/OR//ORvJyXP92W//OR35ZXhZDYcWWUhxGYP+xTf+zTf+xTv+xTv/adf/PSv/npf/UXf/rtP/qs//rs//rtP/rtP/rtP/rtP+8Yv+zUf+wTP/vtv/rtP/rtf/qs//jpv/GdAAAGIyYiv/rtP/rtP/rtP/yxBVDYBpGYv/rtP/rtP/rtBZDYRdEYRpGYoyYi//zuP/rtBZEYRZDYRdEYRZDYAktUBdEYP91XP91W/90XH9aXvRzXBZDYRlEYH5ZXhdEYBdEYTxaXBRCYf/PRsitTTpZXH9ZXv/OR//ORsisTTpWXf/NR//ASsiYUjpUXv+/Sv+xTf+yTciXUjxVXf+wTv+xTv/NRv/NRf/Zcf/rtf/ehf/jmv/CUv+vTP+wTP+wTf/rtP/psP/dm//RiP/Hdf/qs+/grv/stHeJg/DgrhZDYAAAAG+4r2sAAABrdFJOUwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAem+76zVMDtOcftswftvkftuwftv4fth+2th+2th+2Hh+2H7Yfth8XtHb+I9iCKt8Cjf60HzPm/tl1FwSZ4IIiATzs544pCKTtmTIDUuGlOwV/kqTKCwAAAAFiS0dEAIgFHUgAAAAJcEhZcwAADdcAAA3XAUIom3gAAAAHdElNRQfqBxgEGgWbyJesAAABOElEQVQ4y2NgwA8YGSWlpGVk5eQJq1PIBgJFOfzqmJiVlLPBQAWvOhZWVbWcXLBCdbzqWDQ08/IhKrXwqtPWKSgsAqvUlcKtjo1dT7+4BKpSQRK3OjYDw9IyqEojSUbc6oxNyisqwSqrTM0YGXGrM6+uKa+tKyspKdC04MCrrr6mvqGxqaxEx5KFk4C65pbWtnZ9SxYWguo6WlqsrLmIUNfZaWPLzUOMOjt7Xt5RdaPq8Khj4HNw7CJGHb+Ak3M3EeoY+F1ce7qJUcfv1tvXRVgdA7+7R2//hJaJkyYTUOfpNWXK1GnTZ3j7+OJTJyjk5z9z5pTegMCgYGE86hhYQkJnzZ45JSw8IlKEAR8QjYqeMzcmNs6TnwE/iE+Yl5iUnEJIGQNDalp6RqYYQWUMDFmp8eISRKgDAHlUvFaI+KI/AAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAAABJRU5ErkJggg==" style="width:16px;height:16px;"/></button>
         <button class="mgmt-edit-btn" onclick="triggerImageUpload(${idx})"><img src="data:image/png;base64,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" style="width:16px;height:16px;"/></button>
         <input type="file" accept="image/*" style="display:none" id="imgfile-${idx}" onchange="handleImageUpload(${idx},this)"/>
-        ${item.id.startsWith('custom_')?`<button class="mgmt-edit-btn mgmt-del-btn" onclick="deleteMenuItem(${idx})">${trashIcon(15)}</button>`:''}
+        <button class="mgmt-edit-btn mgmt-del-btn" onclick="deleteMenuItem(${idx})">${trashIcon(15)}</button>
         <label class="tog"><input type="checkbox" ${item.active?'checked':''} onchange="toggleActive(${idx},this.checked)"><span class="tog-sl"></span></label>
       </div>
     </div>
     <div class="edit-form" id="ef-${idx}">
       <div class="erow">
         <div class="efield"><label>品項名稱</label><input id="en-${idx}" value="${item.name}"/></div>
-        <div class="efield"><label>分類</label><select id="ecat-${idx}">${categories.map(c=>`<option value="${c.id}"${c.id===item.cat?' selected':''}>${c.emoji} ${c.name}</option>`).join('')}<option value=""${!item.cat?' selected':''}>無分類</option></select></div>
+        <div class="efield"><label>分類</label><select id="ecat-${idx}">${categories.map(c=>`<option value="${c.id}"${c.id===item.cat?' selected':''}>${catDisplayName(c)}</option>`).join('')}<option value=""${!item.cat?' selected':''}>無分類</option></select></div>
       </div>
       <div class="erow">
         <div class="efield"><label>售價</label><input type="number" id="ep-${idx}" value="${item.price||0}"/></div>
@@ -1904,7 +2024,8 @@ function toggleActive(i,v){menuData[i].active=v;showToast(v?'✅ 已啟用':'⛔
 function openAddItem(){
   ['ai-name','ai-unit','ai-price','ai-cost'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   updateAiCatOptions();
-  document.getElementById('ai-cat').value='生蠔';
+  const catSelect=document.getElementById('ai-cat');
+  catSelect.value=categories.some(c=>c.id==='生蠔')?'生蠔':(categories[0]?categories[0].id:'');
   document.getElementById('addItemOvl').classList.add('show');
 }
 function doAddItem(){
@@ -1932,10 +2053,11 @@ function doAddItem(){
 }
 function deleteMenuItem(idx){
   const item=menuData[idx];
+  if(!item)return;
   if(confirm(`確定刪除「${item.name}」嗎？`)){
-    menuData.splice(idx,1);delete mP[item.id];delete mC[item.id];delete qty[item.id];
+    menuData.splice(idx,1);delete mP[item.id];delete mC[item.id];delete qty[item.id];delete itemNotes[item.id];
     const card=document.getElementById('card-'+item.id);if(card)card.remove();
-    renderMgmt();showToast('🗑 已刪除：'+item.name,'#E05050');
+    updateCart();renderMgmt();showToast('🗑 已刪除：'+item.name,'#E05050');
   }
 }
 
@@ -2118,7 +2240,7 @@ function saveOCard(oi){const o=orderHistory[oi];const dtEl=document.getElementBy
 let pendingDelOi=null;
 function askDelOrder(oi){pendingDelOi=oi;document.getElementById('delOvl').classList.add('show');}
 function doDelOrder(){if(pendingDelOi===null)return;orderHistory.splice(pendingDelOi,1);pendingDelOi=null;closeOvl('delOvl');renderOrders();showToast('🗑 訂單已刪除','#E05050');}
-function addNewOrder(dateStr){const p=dateStr.split('/');const ts=new Date(+p[0],+p[1]-1,+p[2],12,0,0);const m=menuData[0];orderHistory.unshift({ts,total:m.price,cost:m.cost,profit:m.price-m.cost,items:[{name:m.name,qty:1,price:m.price,cost:m.cost}],sel:false,status:'pending',paid:false});renderOrders();showToast('✅ 已新增訂單','#27AE60');setTimeout(()=>{const c=document.querySelector('.ocard');if(c)c.classList.add('expanded');},60);}
+function addNewOrder(dateStr){const p=dateStr.split('/');const ts=new Date(+p[0],+p[1]-1,+p[2],12,0,0);const m=menuData.find(x=>x.active);if(!m){showToast('請先新增或啟用菜單品項','#E05050');return;}orderHistory.unshift({ts,total:m.price,cost:m.cost,profit:m.price-m.cost,items:[{name:m.name,qty:1,price:m.price,cost:m.cost}],sel:false,status:'pending',paid:false});renderOrders();showToast('✅ 已新增訂單','#27AE60');setTimeout(()=>{const c=document.querySelector('.ocard');if(c)c.classList.add('expanded');},60);}
 
 let rMode='today';
 let reportDayOffset=0;
