@@ -809,6 +809,31 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   .stat-grid{grid-template-columns:repeat(3,1fr);}
   .stat-card.profit{grid-column:auto;}
 
+  /* 區間查詢：iPad／桌機將起日、迄日與查詢按鈕維持同一排 */
+  #dp-range.show{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 136px;
+    gap:12px;
+    align-items:center;
+  }
+  #dp-range .dp-range-grid{margin-bottom:0;}
+  #dp-range .dp-apply{height:44px;white-space:nowrap;}
+  #dp-single.show{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 136px;
+    gap:12px;
+    align-items:center;
+  }
+  #dp-single .dp-field-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    min-width:0;
+    margin-bottom:0;
+  }
+  #dp-single .dp-datewrap2{flex:1;min-width:0;}
+  #dp-single .dp-apply{height:44px;white-space:nowrap;}
+
   /* 彈窗在較大螢幕改為置中的對話框樣式，而非手機的下滑式選單 */
   .overlay{align-items:center;padding:24px;}
   .sheet{width:440px;border-radius:24px;transform:translateY(24px) scale(.98);}
