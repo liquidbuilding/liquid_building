@@ -367,12 +367,12 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 /* Discount sheet */
 #discountOvl .sheet>.sheet-ico{
   display:inline-flex;align-items:center;justify-content:center;
-  margin:0 0 8px;vertical-align:middle;
+  margin:0 0 7px;vertical-align:middle;
 }
-#discountOvl .sheet>.sheet-ico img{width:28px!important;height:28px!important;display:block;}
+#discountOvl .sheet>.sheet-ico img{width:13px!important;height:13px!important;display:block;}
 #discountOvl .sheet>h3{
   display:inline-block;vertical-align:middle;
-  margin:0 0 8px 8px;
+  margin:0 0 7px 5px;font-size:16px;
 }
 #discountOvl .sheet>.dp-hint:first-of-type{
   font-size:11px;line-height:1.5;color:var(--text2);
@@ -393,6 +393,13 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 }
 .discount-actions{gap:7px;}
 .discount-actions .sbtn{font-size:12px;padding:0 8px;}
+#discountOvl .add-item-form .ai-field input{
+  height:36px;padding:7px 10px;font-size:12px;
+}
+#discountOvl .discount-actions{gap:6px;}
+#discountOvl .discount-actions .sbtn{
+  height:36px;border-radius:var(--r-xs);font-size:11px;padding:0 7px;
+}
 .order-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;color:var(--text3);padding:60px 20px;font-size:14px;font-weight:600;}
 .order-empty img{width:48px;height:48px;object-fit:contain;display:block;}
 
@@ -1315,7 +1322,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
       <div class="ai-field"><label id="dvalLabel">折扣百分比</label><input id="dc-value" type="number" placeholder="例：90 代表 9 折" min="0" oninput="updateDiscountPreview()"/></div>
     </div>
     <div class="dp-hint" id="discountPreview" style="text-align:left;">目前無折扣</div>
-    <div class="sheet-btns discount-actions"><button class="sbtn cancel" onclick="cancelDiscountSheet()">取消</button><button class="sbtn cancel" onclick="clearDiscount()">清除折扣</button><button class="sbtn confirm" onclick="applyDiscount()">✓ 套用折扣</button></div>
+    <div class="sheet-btns discount-actions"><button class="sbtn cancel" onclick="cancelDiscountSheet()">取消</button><button class="sbtn cancel" onclick="clearDiscount()">清除折扣</button><button class="sbtn confirm" onclick="applyDiscount()">套用折扣</button></div>
   </div>
 </div>
 <div class="overlay" id="orderDiscountOvl">
