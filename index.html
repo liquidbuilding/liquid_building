@@ -507,9 +507,35 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   color:var(--text);font-size:13px;font-weight:600;outline:none;width:100%;
 }
 .efield select:focus{border-color:var(--blue);}
+.menu-discount-editor{
+  grid-column:1/-1;background:white;border:1.5px solid var(--border2);
+  border-radius:var(--r-xs);padding:11px 12px;
+}
+.menu-discount-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text3);margin-bottom:8px;}
+.menu-discount-types{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
+.menu-discount-type{
+  height:32px;padding:0 13px;border-radius:var(--rpill);background:white;
+  border:1.5px solid var(--border2);color:var(--text2);font-size:11px;font-weight:800;cursor:pointer;
+}
+.menu-discount-type.active{background:var(--blue);border-color:var(--blue);color:white;box-shadow:0 3px 10px rgba(67,86,224,.22);}
+.menu-discount-control{display:grid;grid-template-columns:96px minmax(0,1fr) auto;gap:8px;align-items:center;}
+.menu-discount-control label{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--text3);}
+.menu-discount-control input{
+  background:var(--bg);border:1.5px solid var(--border2);border-radius:var(--r-xs);
+  padding:9px 11px;color:var(--text);font-size:13px;font-weight:600;outline:none;width:100%;
+}
+.menu-discount-control input:focus{border-color:var(--blue);background:white;}
+.menu-discount-clear{height:36px;padding:0 12px;border:1.5px solid var(--border2);border-radius:var(--r-xs);background:var(--bg);color:var(--text2);font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.menu-discount-preview{font-size:10.5px;color:var(--text3);font-weight:600;margin-top:8px;line-height:1.45;}
+.menu-discount-preview.on{color:var(--orange);}
 .edit-btns{display:flex;gap:8px;}
 .esave{flex:1;height:38px;background:var(--blue);border:none;border-radius:var(--r-xs);color:white;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 3px 10px rgba(67,86,224,.3);}
 .ecancel{height:38px;padding:0 14px;background:white;border:1.5px solid var(--border2);border-radius:var(--r-xs);color:var(--text2);font-size:13px;font-weight:600;cursor:pointer;}
+
+@media (max-width:520px){
+  .menu-discount-control{grid-template-columns:1fr auto;}
+  .menu-discount-control label{grid-column:1/-1;}
+}
 
 /* add item form */
 .add-item-form{display:flex;flex-direction:column;gap:12px;margin-bottom:18px;}
@@ -1364,7 +1390,58 @@ const menuData=[
   {id:'baguette',   name:'蠔野法棍脆片', unit:'奶油·生蠔·香草',price:90, cost:62, active:true,cat:'輕食'},
   {id:'shrimpburgr',name:'百蝦堡',       unit:'鮮蝦·特製醬',   price:180,cost:83, active:true,cat:'輕食'},
 ];
-const mP={},mC={};menuData.forEach(m=>{mP[m.id]=m.price;mC[m.id]=m.cost;});
+function calcMenuSalePrice(price,type,value){
+  price=Math.max(0,Number(price)||0);value=Number(value)||0;
+  if(price<=0||value<=0)return null;
+  if(type==='percent'){
+    if(value>=100)return null;
+    return Math.max(1,Math.round(price*Math.max(0,value)/100));
+  }
+  if(type==='fixed'){
+    if(value>=price)return null;
+    return Math.max(1,Math.round(price-value));
+  }
+  return null;
+}
+function getMenuDiscountConfig(item){
+  if(item&&item.saleDiscount&&item.saleDiscount.value>0){
+    return {type:item.saleDiscount.type==='fixed'?'fixed':'percent',value:Number(item.saleDiscount.value)};
+  }
+  const oldPrice=Number(item&&item.specialPrice);
+  const regular=Number(item&&item.price)||0;
+  if(oldPrice>0&&oldPrice<regular)return {type:'fixed',value:regular-oldPrice};
+  return null;
+}
+function getMenuSalePrice(item){
+  const cfg=getMenuDiscountConfig(item);
+  if(cfg){const sale=calcMenuSalePrice(item.price,cfg.type,cfg.value);if(sale!==null)return sale;}
+  const oldPrice=Number(item&&item.specialPrice);
+  return oldPrice>0&&oldPrice<Number(item.price)?oldPrice:(Number(item&&item.price)||0);
+}
+function menuDiscountPreviewText(price,type,value){
+  const sale=calcMenuSalePrice(price,type,value);
+  if(sale===null)return '目前無活動折扣';
+  return '原價 $'+Number(price).toLocaleString()+' → 活動價 $'+sale.toLocaleString()+'（折抵 $'+(Number(price)-sale).toLocaleString()+'）';
+}
+function renderMenuDiscountEditor(item,idx){
+  const cfg=getMenuDiscountConfig(item),type=cfg?cfg.type:'percent',value=cfg?cfg.value:'';
+  const preview=menuDiscountPreviewText(item.price,type,value),active=value!=='';
+  return `<div class="menu-discount-editor">
+    <div class="menu-discount-title">活動折扣（選填，設定後點餐頁顯示劃線原價＋活動價）</div>
+    <input type="hidden" id="msd-type-${idx}" value="${type}"/>
+    <div class="menu-discount-types">
+      <button type="button" class="menu-discount-type${type==='percent'?' active':''}" id="msd-percent-${idx}" onclick="setMenuDiscountType(${idx},'percent')">％ 百分比折扣</button>
+      <button type="button" class="menu-discount-type${type==='fixed'?' active':''}" id="msd-fixed-${idx}" onclick="setMenuDiscountType(${idx},'fixed')">固定金額折扣</button>
+    </div>
+    <div class="menu-discount-control">
+      <label id="msd-label-${idx}">${type==='percent'?'折扣百分比':'折扣金額'}</label>
+      <input type="number" id="msd-value-${idx}" min="0" value="${value}" placeholder="${type==='percent'?'例：90 代表 9 折':'例：50 代表折抵 $50'}" oninput="updateMenuDiscountPreview(${idx})"/>
+      <button type="button" class="menu-discount-clear" onclick="clearMenuDiscount(${idx})">清除折扣</button>
+    </div>
+    <div class="menu-discount-preview${active?' on':''}" id="msd-preview-${idx}">${preview}</div>
+  </div>`;
+}
+const mP={},mC={};menuData.forEach(m=>{mP[m.id]=getMenuSalePrice(m);mC[m.id]=m.cost;});
 const qty={};menuData.forEach(m=>qty[m.id]=0);qty.oyster2=2;qty.oysrice=1;
 let expenseData={};
 function addExpense(){
@@ -1739,7 +1816,7 @@ function doSubmit(){
   closeOvl('submitOvl');
   const posD=getPosDate();const now=new Date();
   const ts=new Date(posD.getFullYear(),posD.getMonth(),posD.getDate(),now.getHours(),now.getMinutes(),now.getSeconds());
-  const li=[...menuData.filter(m=>qty[m.id]>0).map(m=>({name:m.name,qty:qty[m.id],price:m.price,cost:m.cost,note:itemNotes[m.id]||''})),...customItems.map(ci=>({name:ci.name,qty:ci.qty,price:ci.price,cost:0,note:ci.note||''}))];
+  const li=[...menuData.filter(m=>qty[m.id]>0).map(m=>({name:m.name,qty:qty[m.id],price:getMenuSalePrice(m),cost:m.cost,note:itemNotes[m.id]||''})),...customItems.map(ci=>({name:ci.name,qty:ci.qty,price:ci.price,cost:0,note:ci.note||''}))];
   const subtotal=li.reduce((s,i)=>s+i.price*i.qty,0),c=li.reduce((s,i)=>s+i.cost*i.qty,0);
   const discAmt=calcDiscountAmount(subtotal);
   const t=subtotal-discAmt;
@@ -2006,8 +2083,9 @@ function renderMcardPrice(id,item){
   item=item||menuData.find(m=>m.id===id);if(!item)return;
   const el=document.querySelector('#card-'+id+' .mcard-price');
   if(!el)return;
-  if(item.specialPrice){
-    el.innerHTML=`<s style="color:var(--text3);font-weight:600;font-size:13px;margin-right:4px;">$${item.price}</s><span>$</span>${item.specialPrice}`;
+  const salePrice=getMenuSalePrice(item);
+  if(salePrice<item.price){
+    el.innerHTML=`<s style="color:var(--text3);font-weight:600;font-size:13px;margin-right:4px;">$${item.price}</s><span>$</span>${salePrice}`;
     const badge=document.querySelector('#card-'+id+' .sale-badge');
     if(!badge){
       const img=document.querySelector('#card-'+id+' .mcard-img');
@@ -2018,6 +2096,28 @@ function renderMcardPrice(id,item){
     const badge=document.querySelector('#card-'+id+' .sale-badge');
     if(badge)badge.remove();
   }
+}
+
+function setMenuDiscountType(idx,type){
+  document.getElementById('msd-type-'+idx).value=type;
+  document.getElementById('msd-percent-'+idx).classList.toggle('active',type==='percent');
+  document.getElementById('msd-fixed-'+idx).classList.toggle('active',type==='fixed');
+  document.getElementById('msd-label-'+idx).textContent=type==='percent'?'折扣百分比':'折扣金額';
+  document.getElementById('msd-value-'+idx).placeholder=type==='percent'?'例：90 代表 9 折':'例：50 代表折抵 $50';
+  updateMenuDiscountPreview(idx);
+}
+function updateMenuDiscountPreview(idx){
+  const price=Number(document.getElementById('ep-'+idx).value)||0;
+  const type=document.getElementById('msd-type-'+idx).value;
+  const value=Number(document.getElementById('msd-value-'+idx).value)||0;
+  const preview=document.getElementById('msd-preview-'+idx);
+  const sale=calcMenuSalePrice(price,type,value);
+  preview.textContent=menuDiscountPreviewText(price,type,value);
+  preview.classList.toggle('on',sale!==null);
+}
+function clearMenuDiscount(idx){
+  document.getElementById('msd-value-'+idx).value='';
+  updateMenuDiscountPreview(idx);
 }
 
 
@@ -2040,7 +2140,7 @@ function renderMgmt(){
       ${getThumbOrEmoji(item.id)}
       <div class="mgmt-info">
         <div class="mgmt-name"><span class="mgmt-cat-badge">${catDisplayName(categories.find(x=>x.id===item.cat))}</span>${item.name}</div>
-        <div class="mgmt-meta">${item.unit} | 售 <b>${item.specialPrice?`<s style="color:var(--text3);font-weight:400;">$${item.price||0}</s> $${item.specialPrice}`:'$'+(item.price||0)}</b> | <span style="color:#E05050;font-weight:700;">成本 $${item.cost||0}</span></div>
+        <div class="mgmt-meta">${item.unit} | 售 <b>${getMenuSalePrice(item)<item.price?`<s style="color:var(--text3);font-weight:400;">$${item.price||0}</s> $${getMenuSalePrice(item)}`:'$'+(item.price||0)}</b> | <span style="color:#E05050;font-weight:700;">成本 $${item.cost||0}</span></div>
       </div>
       <div class="mgmt-actions">
         <button class="mgmt-edit-btn" onclick="toggleEdit(${idx})"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAHgUExURQAAAP91XP94W/90XBdEYaZiXf/ORwAyZERNYBRDYTRRXv+tTv/1PP+xTv/Ybv/rtP/XbP//zf/ttf/Wj//tuRdEYA04WhZDYRY/Xv91XP91XP91XP91XP91XP91XP91XP91XP91XP91W/91XP91XHZYXvByXP91XBRDYRxFYP91XBdEYRdEYf91XCVMXxVDYf/YRMasTf90XP/OR//ORvJyXP92W//OR35ZXhZDYcWWUhxGYP+xTf+zTf+xTv+xTv/adf/PSv/npf/UXf/rtP/qs//rs//rtP/rtP/rtP/rtP+8Yv+zUf+wTP/vtv/rtP/rtf/qs//jpv/GdAAAGIyYiv/rtP/rtP/rtP/yxBVDYBpGYv/rtP/rtP/rtBZDYRdEYRpGYoyYi//zuP/rtBZEYRZDYRdEYRZDYAktUBdEYP91XP91W/90XH9aXvRzXBZDYRlEYH5ZXhdEYBdEYTxaXBRCYf/PRsitTTpZXH9ZXv/OR//ORsisTTpWXf/NR//ASsiYUjpUXv+/Sv+xTf+yTciXUjxVXf+wTv+xTv/NRv/NRf/Zcf/rtf/ehf/jmv/CUv+vTP+wTP+wTf/rtP/psP/dm//RiP/Hdf/qs+/grv/stHeJg/DgrhZDYAAAAG+4r2sAAABrdFJOUwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAem+76zVMDtOcftswftvkftuwftv4fth+2th+2th+2Hh+2H7Yfth8XtHb+I9iCKt8Cjf60HzPm/tl1FwSZ4IIiATzs544pCKTtmTIDUuGlOwV/kqTKCwAAAAFiS0dEAIgFHUgAAAAJcEhZcwAADdcAAA3XAUIom3gAAAAHdElNRQfqBxgEGgWbyJesAAABOElEQVQ4y2NgwA8YGSWlpGVk5eQJq1PIBgJFOfzqmJiVlLPBQAWvOhZWVbWcXLBCdbzqWDQ08/IhKrXwqtPWKSgsAqvUlcKtjo1dT7+4BKpSQRK3OjYDw9IyqEojSUbc6oxNyisqwSqrTM0YGXGrM6+uKa+tKyspKdC04MCrrr6mvqGxqaxEx5KFk4C65pbWtnZ9SxYWguo6WlqsrLmIUNfZaWPLzUOMOjt7Xt5RdaPq8Khj4HNw7CJGHb+Ak3M3EeoY+F1ce7qJUcfv1tvXRVgdA7+7R2//hJaJkyYTUOfpNWXK1GnTZ3j7+OJTJyjk5z9z5pTegMCgYGE86hhYQkJnzZ45JSw8IlKEAR8QjYqeMzcmNs6TnwE/iE+Yl5iUnEJIGQNDalp6RqYYQWUMDFmp8eISRKgDAHlUvFaI+KI/AAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAAABJRU5ErkJggg==" style="width:16px;height:16px;"/></button>
@@ -2056,12 +2156,10 @@ function renderMgmt(){
         <div class="efield"><label>分類</label><select id="ecat-${idx}">${categories.map(c=>`<option value="${c.id}"${c.id===item.cat?' selected':''}>${catDisplayName(c)}</option>`).join('')}<option value=""${!item.cat?' selected':''}>無分類</option></select></div>
       </div>
       <div class="erow">
-        <div class="efield"><label>售價</label><input type="number" id="ep-${idx}" value="${item.price||0}"/></div>
+        <div class="efield"><label>售價</label><input type="number" id="ep-${idx}" value="${item.price||0}" oninput="updateMenuDiscountPreview(${idx})"/></div>
         <div class="efield"><label>成本</label><input type="number" id="ec-${idx}" value="${item.cost||0}"/></div>
       </div>
-      <div class="erow">
-        <div class="efield" style="grid-column:1/-1"><label>活動價 $（選填，設定後點餐頁顯示劃線原價＋活動價）</label><input type="number" id="esp-${idx}" placeholder="例：150（不設定請留空）" min="0" value="${item.specialPrice?item.specialPrice:''}"/></div>
-      </div>
+      <div class="erow">${renderMenuDiscountEditor(item,idx)}</div>
       <div class="erow">
         <div class="efield" style="grid-column:1/-1"><label>備註</label><input id="eu-${idx}" placeholder="備註（選填）" value="${item.unit}"/></div>
       </div>
@@ -2073,17 +2171,24 @@ function renderMgmt(){
 }
 function toggleEdit(i){document.getElementById('ef-'+i).classList.toggle('open');}
 function saveEdit(i){
-  menuData[i].name=document.getElementById('en-'+i).value;
-  menuData[i].unit=document.getElementById('eu-'+i).value;
   const newPrice=parseInt(document.getElementById('ep-'+i).value);
   const newCost=parseInt(document.getElementById('ec-'+i).value);
-  menuData[i].price=isNaN(newPrice)?0:newPrice;
-  menuData[i].cost=isNaN(newCost)?0:newCost;
-  const spEl=document.getElementById('esp-'+i);
-  const newSp=spEl?parseInt(spEl.value):NaN;
-  if(!isNaN(newSp)&&newSp>0&&newSp<menuData[i].price)menuData[i].specialPrice=newSp;
-  else menuData[i].specialPrice=null;
-  mP[menuData[i].id]=menuData[i].specialPrice||menuData[i].price;mC[menuData[i].id]=menuData[i].cost;
+  const price=isNaN(newPrice)?0:newPrice,cost=isNaN(newCost)?0:newCost;
+  const discountType=document.getElementById('msd-type-'+i).value;
+  const discountRaw=document.getElementById('msd-value-'+i).value.trim();
+  const discountValue=discountRaw===''?0:Number(discountRaw);
+  if(price<=0){showToast('售價需大於 0','#E05050');return;}
+  if(discountValue<0||!Number.isFinite(discountValue)){showToast('請輸入有效折扣','#E05050');return;}
+  if(discountValue>0&&discountType==='percent'&&discountValue>=100){showToast('百分比請輸入小於 100 的數值，例如 90 代表 9 折','#E05050');return;}
+  if(discountValue>0&&discountType==='fixed'&&discountValue>=price){showToast('固定折扣金額需小於售價','#E05050');return;}
+  const salePrice=discountValue>0?calcMenuSalePrice(price,discountType,discountValue):null;
+  menuData[i].name=document.getElementById('en-'+i).value;
+  menuData[i].unit=document.getElementById('eu-'+i).value;
+  menuData[i].price=price;
+  menuData[i].cost=cost;
+  menuData[i].saleDiscount=salePrice!==null?{type:discountType,value:discountValue}:null;
+  menuData[i].specialPrice=salePrice;
+  mP[menuData[i].id]=getMenuSalePrice(menuData[i]);mC[menuData[i].id]=menuData[i].cost;
   renderMcardPrice(menuData[i].id,menuData[i]);
   const catSel=document.getElementById('ecat-'+i);
   if(catSel&&catSel.value!==menuData[i].cat){
@@ -2098,7 +2203,7 @@ function saveEdit(i){
     }
   }
   document.getElementById('ef-'+i).classList.remove('open');
-  renderMgmt();showToast('✅ 已儲存','#27AE60');
+  updateCart();renderMgmt();showToast('✅ 已儲存','#27AE60');
 }
 function toggleActive(i,v){menuData[i].active=v;showToast(v?'✅ 已啟用':'⛔ 已停用',v?'#27AE60':'#E05050');}
 function openAddItem(){
@@ -2351,7 +2456,7 @@ function renderOrders(){
             <div class="odt-edit"><label>日期時間</label><input class="odt-input" type="datetime-local" id="odt-${o.oi}" value="${toDTL(o.ts)}"/></div>
             ${o.items.map((it,ii)=>`<div class="oitem-row"><div class="oitem-name">${it.name}${it.note?`<div class="oitem-note">📝 ${it.note}</div>`:''}</div><div class="oqctrl"><button class="oqbtn" onclick="chOQ(${o.oi},${ii},-1)">−</button><span class="oqnum" id="oq-${o.oi}-${ii}">${it.qty}</span><button class="oqbtn" onclick="chOQ(${o.oi},${ii},1)">+</button></div><div class="oitem-sub" id="os-${o.oi}-${ii}">$${(it.price*it.qty).toLocaleString()}</div><button class="odel-btn" onclick="delOItem(${o.oi},${ii})">×</button></div>`).join('')}
             ${o.discount&&o.discount.amount?`<div class="odt-discount-row"><span>${discIcon(14)}原價 $${(o.subtotal||o.total).toLocaleString()}　折扣 -$${o.discount.amount.toLocaleString()}</span><span style="color:var(--orange);font-weight:900;">實收 $${o.total.toLocaleString()}</span></div>`:''}
-            <div class="add-item-row"><select class="add-sel" id="osel-${o.oi}">${menuData.map(m=>`<option value="${m.id}">${m.name} $${m.price}</option>`).join('')}</select><button class="add-btn-sm" onclick="addOItem(${o.oi})">＋ 加入</button></div>
+            <div class="add-item-row"><select class="add-sel" id="osel-${o.oi}">${menuData.map(m=>`<option value="${m.id}">${m.name} $${getMenuSalePrice(m)}</option>`).join('')}</select><button class="add-btn-sm" onclick="addOItem(${o.oi})">＋ 加入</button></div>
             <div class="add-custom-row"><input class="add-ci" type="text" id="ocn-${o.oi}" placeholder="自填品項名稱" maxlength="20"/><input class="add-ci add-ci-price" type="number" id="ocp-${o.oi}" placeholder="金額" min="0"/><button class="add-btn-sm" onclick="addOCustom(${o.oi})" style="background:var(--orange);">＋</button></div>
             <div class="oaction-bar">
               <button class="odiscount-btn" onclick="openOrderDiscount(${o.oi})">設定折扣</button>
@@ -2374,13 +2479,13 @@ function renderOrders(){
 function toggleOCard(oi){if(batchMode)return;document.getElementById('ocard-'+oi).classList.toggle('expanded');}
 function chOQ(oi,ii,d){const o=orderHistory[oi];o.items[ii].qty=Math.max(0,o.items[ii].qty+d);const q=document.getElementById('oq-'+oi+'-'+ii),s=document.getElementById('os-'+oi+'-'+ii);if(q)q.textContent=o.items[ii].qty;if(s)s.textContent='$'+(o.items[ii].price*o.items[ii].qty).toLocaleString();}
 function delOItem(oi,ii){const o=orderHistory[oi];o.items.splice(ii,1);recalcOrder(o);renderOrders();reopenOrderCard(oi);}
-function addOItem(oi){const sel=document.getElementById('osel-'+oi);const m=menuData.find(x=>x.id===sel.value);if(!m)return;const o=orderHistory[oi];o.items.push({name:m.name,qty:1,price:m.price,cost:m.cost});recalcOrder(o);renderOrders();reopenOrderCard(oi);showToast('✅ 已新增：'+m.name,'#27AE60');}
+function addOItem(oi){const sel=document.getElementById('osel-'+oi);const m=menuData.find(x=>x.id===sel.value);if(!m)return;const o=orderHistory[oi];o.items.push({name:m.name,qty:1,price:getMenuSalePrice(m),cost:m.cost});recalcOrder(o);renderOrders();reopenOrderCard(oi);showToast('✅ 已新增：'+m.name,'#27AE60');}
 function addOCustom(oi){const n=document.getElementById('ocn-'+oi),p=document.getElementById('ocp-'+oi);const name=n.value.trim(),price=parseInt(p.value)||0;if(!name||price<=0){showToast('請填寫品項與金額','#E05050');return;}const o=orderHistory[oi];o.items.push({name,qty:1,price,cost:0});recalcOrder(o);renderOrders();reopenOrderCard(oi);showToast('✅ 已加入：'+name,'#27AE60');}
 function saveOCard(oi){const o=orderHistory[oi];const dtEl=document.getElementById('odt-'+oi);if(dtEl&&dtEl.value)o.ts=new Date(dtEl.value);o.items=o.items.filter(it=>it.qty>0);recalcOrder(o);renderOrders();showToast('✅ 訂單已更新','#27AE60');}
 let pendingDelOi=null;
 function askDelOrder(oi){pendingDelOi=oi;document.getElementById('delOvl').classList.add('show');}
 function doDelOrder(){if(pendingDelOi===null)return;orderHistory.splice(pendingDelOi,1);pendingDelOi=null;closeOvl('delOvl');renderOrders();showToast('🗑 訂單已刪除','#E05050');}
-function addNewOrder(dateStr){const p=dateStr.split('/');const ts=new Date(+p[0],+p[1]-1,+p[2],12,0,0);const m=menuData.find(x=>x.active);if(!m){showToast('請先新增或啟用菜單品項','#E05050');return;}orderHistory.unshift({ts,total:m.price,subtotal:m.price,discount:null,cost:m.cost,profit:m.price-m.cost,items:[{name:m.name,qty:1,price:m.price,cost:m.cost}],sel:false,status:'pending',paid:false});renderOrders();showToast('✅ 已新增訂單','#27AE60');setTimeout(()=>{const c=document.querySelector('.ocard');if(c)c.classList.add('expanded');},60);}
+function addNewOrder(dateStr){const p=dateStr.split('/');const ts=new Date(+p[0],+p[1]-1,+p[2],12,0,0);const m=menuData.find(x=>x.active);if(!m){showToast('請先新增或啟用菜單品項','#E05050');return;}const salePrice=getMenuSalePrice(m);orderHistory.unshift({ts,total:salePrice,subtotal:salePrice,discount:null,cost:m.cost,profit:salePrice-m.cost,items:[{name:m.name,qty:1,price:salePrice,cost:m.cost}],sel:false,status:'pending',paid:false});renderOrders();showToast('✅ 已新增訂單','#27AE60');setTimeout(()=>{const c=document.querySelector('.ocard');if(c)c.classList.add('expanded');},60);}
 
 let rMode='today';
 let reportDayOffset=0;
