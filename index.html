@@ -2,7 +2,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>津樓</title>
+<title>津丘 Chill-In</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&amp;family=DM+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
 <style>
 :root{
@@ -472,7 +472,6 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 }
 .cat-mgmt-chip.armed{background:var(--red-lt);border-color:var(--red);}
 #catManageOvl .sbtn{border-radius:var(--r-xs);}
-.cat-mgmt-emoji{font-size:13px;}
 .cat-mgmt-icon{
   width:22px;height:22px;border-radius:50%;border:none;background:var(--white);
   font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;
@@ -1343,7 +1342,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
         <div class="ai-field"><label>成本 $</label><input id="ai-cost" type="number" placeholder="0" min="0"></div>
       </div>
       <div class="ai-field"><label>分類</label>
-        <select id="ai-cat" class="ai-select"><option value="生蠔">🦪 生蠔系列</option><option value="主食">🍚 主食</option><option value="輕食">🥖 輕食</option><option value="">無分類</option></select>
+        <select id="ai-cat" class="ai-select"><option value="生蠔">生蠔系列</option><option value="主食">主食</option><option value="輕食">輕食</option><option value="">無分類</option></select>
         <div style="margin-top:6px;text-align:right;"><span onclick="openAddCat()" style="font-size:12px;color:var(--blue);font-weight:700;cursor:pointer;">＋ 新增分類</span></div>
       </div>
     </div>
@@ -1404,7 +1403,6 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
     <input type="hidden" id="ac-edit-id" value="">
     <div class="add-item-form">
       <div class="ai-field"><label>分類名稱 *</label><input id="ac-name" type="text" placeholder="例：甜點系列" maxlength="20"></div>
-      <div class="ai-field"><label>圖示（emoji，選填）</label><input id="ac-emoji" type="text" placeholder="例：🍰" maxlength="4"></div>
     </div>
     <div class="sheet-btns"><button class="sbtn cancel" onclick="closeOvl('addCatOvl')">取消</button><button class="sbtn confirm" id="ac-save-btn" onclick="doSaveCat()">＋ 新增分類</button></div>
   </div>
@@ -1612,9 +1610,9 @@ function saveCloudSettings(){
 }
 
 const defaultCategories=[
-  {id:'生蠔',emoji:'🦪',name:'生蠔系列'},
-  {id:'主食',emoji:'🍚',name:'主食'},
-  {id:'輕食',emoji:'🥖',name:'輕食'},
+  {id:'生蠔',name:'生蠔系列'},
+  {id:'主食',name:'主食'},
+  {id:'輕食',name:'輕食'},
 ];
 const categoriesStorageKey='chillin-pos-categories-v1';
 const categoriesCookieKey='chillin_pos_categories_v1';
@@ -1623,7 +1621,7 @@ function normalizeCategories(value){
   const seen=new Set();
   const valid=value.filter(c=>c&&typeof c.id==='string'&&c.id&&typeof c.name==='string'&&c.name.trim()&&!seen.has(c.id)).map(c=>{
     seen.add(c.id);
-    return {id:c.id,name:c.name.trim(),emoji:typeof c.emoji==='string'?c.emoji:''};
+    return {id:c.id,name:c.name.trim()};
   });
   return valid.length?valid:null;
 }
@@ -1681,7 +1679,7 @@ function saveCategories(nextCategories=categories){
 let categories=loadCategories();
 
 function catNextId(){let i=1;while(categories.find(c=>c.id==='cat_'+i))i++;return 'cat_'+i;}
-function catDisplayName(c){return c?(c.emoji?c.emoji+' ':'')+c.name:'無分類';}
+function catDisplayName(c){return c?c.name:'無分類';}
 
 function renderCatPills(){
   const strip=document.querySelector('.cat-strip');
@@ -1731,7 +1729,6 @@ function openAddCat(){
   document.getElementById('ac-title').textContent='新增分類';
   document.getElementById('ac-save-btn').textContent='＋ 新增分類';
   document.getElementById('ac-edit-id').value='';
-  document.getElementById('ac-emoji').value='';
   document.getElementById('ac-name').value='';
   document.getElementById('addCatOvl').classList.add('show');
 }
@@ -1741,7 +1738,6 @@ function openEditCat(catId){
   document.getElementById('ac-title').textContent='編輯分類';
   document.getElementById('ac-save-btn').textContent='✓ 儲存';
   document.getElementById('ac-edit-id').value=catId;
-  document.getElementById('ac-emoji').value=c.emoji||'';
   document.getElementById('ac-name').value=c.name;
   document.getElementById('addCatOvl').classList.add('show');
 }
@@ -1750,12 +1746,11 @@ function refreshCatManageIfOpen(){
   if(ovl&&ovl.classList.contains('show')){document.getElementById('catManageList').innerHTML=renderCatMgmtBlock();}
 }
 function doSaveCat(){
-  const emoji=document.getElementById('ac-emoji').value.trim();
   const name=document.getElementById('ac-name').value.trim();
   const editId=document.getElementById('ac-edit-id').value;
   if(!name){showToast('請輸入分類名稱','#E05050');return;}
   if(editId){
-    const nextCategories=categories.map(c=>c.id===editId?{...c,name,emoji}:c);
+    const nextCategories=categories.map(c=>c.id===editId?{...c,name}:c);
     if(!saveCategories(nextCategories))return;
     categories=nextCategories;
     const c=categories.find(x=>x.id===editId);
@@ -1769,7 +1764,7 @@ function doSaveCat(){
     showToast('分類已更新','#27AE60');
   }else{
     const id=catNextId();
-    const nextCategories=[...categories,{id,emoji,name}];
+    const nextCategories=[...categories,{id,name}];
     if(!saveCategories(nextCategories))return;
     categories=nextCategories;
     ensureCatSection(id);
@@ -2317,7 +2312,7 @@ function clearMenuDiscount(idx){
 function renderCatMgmtBlock(){
   return `<div class="cat-mgmt-list">${categories.map(c=>`
       <div class="cat-mgmt-chip${deleteArmedCat===c.id?' armed':''}">
-        ${c.emoji?`<span class="cat-mgmt-emoji">${c.emoji}</span>`:''}<span class="cat-mgmt-name">${c.name}</span>
+        <span class="cat-mgmt-name">${c.name}</span>
         <button class="cat-mgmt-icon" onclick="openEditCat('${c.id}')">${editIcon(11)}</button>
         <button class="cat-mgmt-icon" onclick="deleteCatPrompt('${c.id}')">${deleteArmedCat===c.id?'✓':trashIcon(11)}</button>
       </div>`).join('')}
