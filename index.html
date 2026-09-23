@@ -2,7 +2,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>津樓</title>
+<title>津丘 Chill-In</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&amp;family=DM+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
 <style>
 :root{
@@ -1617,29 +1617,66 @@ const defaultCategories=[
   {id:'輕食',emoji:'🥖',name:'輕食'},
 ];
 const categoriesStorageKey='chillin-pos-categories-v1';
-function loadCategories(){
-  try{
-    const saved=JSON.parse(localStorage.getItem(categoriesStorageKey)||'null');
-    if(Array.isArray(saved)&&saved.length){
-      const seen=new Set();
-      const valid=saved.filter(c=>c&&typeof c.id==='string'&&c.id&&typeof c.name==='string'&&c.name.trim()&&!seen.has(c.id)).map(c=>{
-        seen.add(c.id);
-        return {id:c.id,name:c.name.trim(),emoji:typeof c.emoji==='string'?c.emoji:''};
-      });
-      if(valid.length)return valid;
-    }
-  }catch(err){console.warn('分類資料讀取失敗',err);}
-  return defaultCategories.map(c=>({...c}));
+const categoriesCookieKey='chillin_pos_categories_v1';
+function normalizeCategories(value){
+  if(!Array.isArray(value)||!value.length)return null;
+  const seen=new Set();
+  const valid=value.filter(c=>c&&typeof c.id==='string'&&c.id&&typeof c.name==='string'&&c.name.trim()&&!seen.has(c.id)).map(c=>{
+    seen.add(c.id);
+    return {id:c.id,name:c.name.trim(),emoji:typeof c.emoji==='string'?c.emoji:''};
+  });
+  return valid.length?valid:null;
 }
-function saveCategories(){
+function readCategoriesCookie(){
   try{
-    localStorage.setItem(categoriesStorageKey,JSON.stringify(categories));
-    return true;
+    const prefix=categoriesCookieKey+'=';
+    const row=document.cookie.split('; ').find(v=>v.startsWith(prefix));
+    return row?decodeURIComponent(row.slice(prefix.length)):'';
   }catch(err){
-    console.warn('分類資料儲存失敗',err);
-    showToast('分類無法儲存，請確認瀏覽器允許網站資料','#E05050');
+    console.warn('分類備份讀取失敗',err);
+    return '';
+  }
+}
+function writeCategoriesCookie(payload){
+  try{
+    const encoded=encodeURIComponent(payload);
+    if(encoded.length>3600)return false;
+    document.cookie=`${categoriesCookieKey}=${encoded}; path=/; max-age=31536000; SameSite=Lax`;
+    return readCategoriesCookie()===payload;
+  }catch(err){
+    console.warn('分類備份儲存失敗',err);
     return false;
   }
+}
+function loadCategories(){
+  const sources=[readCategoriesCookie()];
+  try{
+    sources.push(localStorage.getItem(categoriesStorageKey)||'');
+  }catch(err){console.warn('分類本機資料讀取失敗',err);}
+  for(const raw of sources){
+    if(!raw)continue;
+    try{
+      const valid=normalizeCategories(JSON.parse(raw));
+      if(valid)return valid;
+    }catch(err){console.warn('分類資料格式錯誤',err);}
+  }
+  return defaultCategories.map(c=>({...c}));
+}
+function saveCategories(nextCategories=categories){
+  const normalized=normalizeCategories(nextCategories);
+  if(!normalized)return false;
+  const payload=JSON.stringify(normalized);
+  let localSaved=false;
+  try{
+    localStorage.setItem(categoriesStorageKey,payload);
+    localSaved=localStorage.getItem(categoriesStorageKey)===payload;
+  }catch(err){
+    console.warn('分類本機資料儲存失敗',err);
+  }
+  const cookieSaved=writeCategoriesCookie(payload);
+  if(localSaved||cookieSaved)return true;
+  showToast('分類未能儲存，請確認 Safari 沒有使用私密瀏覽或封鎖網站資料','#E05050');
+  return false;
 }
 let categories=loadCategories();
 
@@ -1718,30 +1755,30 @@ function doSaveCat(){
   const editId=document.getElementById('ac-edit-id').value;
   if(!name){showToast('請輸入分類名稱','#E05050');return;}
   if(editId){
+    const nextCategories=categories.map(c=>c.id===editId?{...c,name,emoji}:c);
+    if(!saveCategories(nextCategories))return;
+    categories=nextCategories;
     const c=categories.find(x=>x.id===editId);
-    if(c){
-      c.name=name;c.emoji=emoji;
-      const hdr=document.querySelector('#sec-'+editId+' .sec-hdr-label');
-      if(hdr)hdr.textContent=catDisplayName(c);
-    }
-    saveCategories();
+    const hdr=document.querySelector('#sec-'+editId+' .sec-hdr-label');
+    if(hdr&&c)hdr.textContent=catDisplayName(c);
     closeOvl('addCatOvl');
     renderCatPills();
     updateAiCatOptions();
     renderMgmt();
     refreshCatManageIfOpen();
-    showToast('✅ 分類已更新','#27AE60');
+    showToast('分類已更新','#27AE60');
   }else{
     const id=catNextId();
-    categories.push({id,emoji,name});
-    saveCategories();
+    const nextCategories=[...categories,{id,emoji,name}];
+    if(!saveCategories(nextCategories))return;
+    categories=nextCategories;
     ensureCatSection(id);
     closeOvl('addCatOvl');
     renderCatPills();
     updateAiCatOptions();
     renderMgmt();
     refreshCatManageIfOpen();
-    showToast('✅ 已新增分類：'+name,'#27AE60');
+    showToast('已新增分類：'+name,'#27AE60');
   }
 }
 let deleteArmedCat=null;
@@ -1758,8 +1795,9 @@ function deleteCatPrompt(catId){
     return;
   }
   deleteArmedCat=null;
-  categories=categories.filter(x=>x.id!==catId);
-  saveCategories();
+  const nextCategories=categories.filter(x=>x.id!==catId);
+  if(!saveCategories(nextCategories))return;
+  categories=nextCategories;
   const sec=document.getElementById('sec-'+catId);if(sec)sec.remove();
   renderCatPills();
   updateAiCatOptions();
@@ -1951,7 +1989,13 @@ function cancelDiscountSheet(){
 function showPage(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
-  if(p==='mgmt')renderMgmt();
+  if(p==='mgmt'){
+    categories=loadCategories();
+    renderCatPills();
+    updateAiCatOptions();
+    syncMenuCardsToCategories();
+    renderMgmt();
+  }
   if(p==='orders')renderOrders();
   if(p==='report')initReport();
 }
