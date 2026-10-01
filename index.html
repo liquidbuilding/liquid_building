@@ -1135,6 +1135,10 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 /* ── 菜單修改：手機版專用修正，避免卡片與空白編輯器造成跑版 ── */
 @media(max-width:600px){
   .mgmt-layout{display:flex!important;flex-direction:column!important;width:100%!important;max-width:100%!important;min-width:0!important;gap:10px!important;padding:8px 10px 90px!important;overflow-x:hidden!important;overflow-y:auto!important;box-sizing:border-box!important;}
+  /* 手機版品項清單改為自然高度，避免 flex-shrink 把每張卡片壓扁 */
+  .mgmt-workspace{display:block!important;height:auto!important;flex:0 0 auto!important;}
+  .mgmt-workspace .mgmt-scroll{display:flex!important;flex-direction:column!important;height:auto!important;min-height:0!important;flex:0 0 auto!important;overflow:visible!important;}
+  .mgmt-card{flex:0 0 auto!important;min-height:78px!important;height:auto!important;}
   .mgmt-category-sidebar{width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:auto!important;overflow-y:hidden!important;flex:0 0 auto!important;box-sizing:border-box!important;}
   .mgmt-workspace{width:100%!important;max-width:100%!important;min-width:0!important;overflow:visible!important;box-sizing:border-box!important;}
   .mgmt-workspace .mgmt-scroll{width:100%!important;max-width:100%!important;min-width:0!important;display:flex!important;flex-direction:column!important;gap:8px!important;overflow:visible!important;box-sizing:border-box!important;}
@@ -2340,7 +2344,10 @@ function showPage(p){
   const page=document.getElementById('page-'+p);
   if(page)page.classList.add('active');
   const navMap={pos:0,orders:1,report:2,mgmt:3,edit:3};
-  document.querySelectorAll('.bottom-nav .nav-btn').forEach((btn,i)=>btn.classList.toggle('active',i===navMap[p]));
+  /* 每個頁面都有自己的底部導覽列，不能把所有頁面的按鈕混在同一個 NodeList 計算索引 */
+  document.querySelectorAll('.bottom-nav').forEach(nav=>{
+    nav.querySelectorAll('.nav-btn').forEach((btn,i)=>btn.classList.toggle('active',i===navMap[p]));
+  });
   if(p==='mgmt'){
     categories=loadCategories();
     renderCatPills();
