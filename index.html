@@ -1131,6 +1131,34 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 @media (min-width:1600px){
   #page-pos .mcard-img{width:112px;height:112px;flex-basis:112px;}
 }
+
+/* ── 菜單修改：手機版專用修正，避免卡片與空白編輯器造成跑版 ── */
+@media(max-width:600px){
+  .mgmt-layout{display:flex!important;flex-direction:column!important;width:100%!important;max-width:100%!important;min-width:0!important;gap:10px!important;padding:8px 10px 90px!important;overflow-x:hidden!important;overflow-y:auto!important;box-sizing:border-box!important;}
+  .mgmt-category-sidebar{width:100%!important;max-width:100%!important;min-width:0!important;overflow-x:auto!important;overflow-y:hidden!important;flex:0 0 auto!important;box-sizing:border-box!important;}
+  .mgmt-workspace{width:100%!important;max-width:100%!important;min-width:0!important;overflow:visible!important;box-sizing:border-box!important;}
+  .mgmt-workspace .mgmt-scroll{width:100%!important;max-width:100%!important;min-width:0!important;display:flex!important;flex-direction:column!important;gap:8px!important;overflow:visible!important;box-sizing:border-box!important;}
+  .mgmt-card{width:100%!important;max-width:100%!important;min-width:0!important;display:grid!important;grid-template-columns:58px minmax(0,1fr) auto!important;align-items:center!important;gap:9px!important;padding:10px!important;margin:0!important;box-sizing:border-box!important;overflow:hidden!important;}
+  .mgmt-thumb{width:58px!important;height:58px!important;min-width:58px!important;max-width:58px!important;}
+  .mgmt-info{min-width:0!important;width:100%!important;overflow:hidden!important;}
+  .mgmt-name{font-size:15px!important;line-height:1.35!important;word-break:break-word!important;overflow-wrap:anywhere!important;}
+  .mgmt-cat-badge{font-size:9px!important;padding:2px 5px!important;margin-right:4px!important;}
+  .mgmt-meta{font-size:10px!important;line-height:1.5!important;white-space:normal!important;word-break:break-word!important;}
+  .mgmt-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:5px!important;flex:0 0 auto!important;min-width:0!important;}
+  .mgmt-edit-btn{width:34px!important;height:34px!important;min-width:34px!important;padding:0!important;border-radius:8px!important;}
+  .mgmt-edit-btn img{width:16px!important;height:16px!important;max-width:16px!important;}
+  .mgmt-del-btn svg{width:15px!important;height:15px!important;}
+  .tog{width:40px!important;height:22px!important;min-width:40px!important;}
+  .mgmt-editor-pane.is-empty{display:none!important;}
+  .mgmt-editor-pane:not(.is-empty){display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;overflow:visible!important;}
+}
+@media(max-width:380px){
+  .mgmt-card{grid-template-columns:50px minmax(0,1fr) auto!important;gap:7px!important;padding:8px!important;}
+  .mgmt-thumb{width:50px!important;height:50px!important;min-width:50px!important;}
+  .mgmt-edit-btn{width:30px!important;height:30px!important;min-width:30px!important;}
+  .mgmt-actions{gap:3px!important;}
+  .tog{width:36px!important;min-width:36px!important;}
+}
 </style>
 </head>
 <body>
@@ -1332,7 +1360,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
     <section class="mgmt-workspace">
       <div class="mgmt-scroll" id="mgmtList"></div>
     </section>
-    <aside class="mgmt-editor-pane" id="mgmtEditorPane"><div class="mgmt-editor-placeholder">選擇品項開始編輯</div></aside>
+    <aside class="mgmt-editor-pane is-empty" id="mgmtEditorPane"><div class="mgmt-editor-placeholder">選擇品項開始編輯</div></aside>
   </div>
   <div class="bottom-nav">
     <button class="nav-btn" onclick="showPage('pos')"><span class="nav-icon" style="-webkit-mask-image:url(&quot;data:image/png;base64,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&quot;);mask-image:url(&quot;data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAQAAABIkb+zAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAACYktHRAAAqo0jMgAAAAlwSFlzAAAOwwAADsMBx2+oZAAAAAd0SU1FB+oHFQoKC85GXS0AAAhDSURBVHja7ZttcFTVGcd/e3ezmwQSNiEhISGbAQxgsRSqtJPitFQUZhQQ+zZtESlgW4kzVWdihymlX6xahk4dFCFYLK3xi9hUp1rK2BKwNUIRqTDkxVYCIQFDgLyat83u3n5g93Du3d27d5fd7DLd//ly9p6357n3eTvnOQtppJFGGmn8P8OabAIM4OIHrCKT83iTTUosKOMQKiqf8QSWZBMTC6pQ/aWZ0vDdlGTTGRYuUSsg72ZkQIaBCNmSTVsQ7ORixccE8UQhnwKsjNCPGgVvScFsNrEQG1BIvv+Zl3ZGgR5q+R0jySbRCDn8WahuqDLI95JNojHmc9WQAZVX9FqbWko8ymiEHoPBWhAaNuxJ0A872/EavP92vqYfEopIhcWsw8k7/IH+cWYhj+9TiR2VeczxP3NzmF4sdPEaDfgiT/IV2lFR8fCLGL6CQhbZYUqWCZG1oKAAW8V7v8w8QAlNSyg/cD/TALDybWroior8YqpYhD1Mq5sGdtJpOIMaQspVCPfmQzEwWdRyyYqKfAe/ZINhj7so4dGIqgrgETWfUTQaXys0nXsj9rmX6abmOs2Yv9bKpfDdrn8BC0WUYUVlinjmYD5FWOjhrJhuvPAX9rCGLFp5hqtmBqzk3/TSRx9uoT4+Buijjw6eYaKJORzsieCIVPbgMMlCNndyPzONDUmgsZz9fM6gn5uHqTWxaDEbuRM7oHAbuf6n/ZzGB7h5j10RlDhGLGE4wpvbYXKmgBktoEGMbaDAtBmNEgEduEwfmYY9203O6GNY1K4/G2Io3qQH3tc1NFNjsITKIV5LDAE3isAXGGMrR/gCGah8g9v9T/t4iR4sXORvXIhiVgsWMiVxUchkJKSLumGE0vA9whmd56u0mZ5LYSKlTKeCckoo5A5JiY9zmYu08QmtXGTATERjDvHZUtpxsZBFLGAG+SECiVzu8tfcdHOOE7zPB5zDHS82tNghrMd/jQ40AFAoYw37aMMT0QPIxUM7r7OWskTsSL4rTOqrYcMyABsL+BXNjEVFupaNFrbyRTLiy0A2mzlDJ3XMDtvHyu3U8GnMpMulk93cEeshZ2g3baOEbNoZDDNqBht5kOIwrR4G6KWbfgZxA3YmkEs+TnLC6twlatlFa7wYMP4+3+HJkGHHKB2c4iMaOUcXnzGCBxWwYCOTHAoo5zbmM4+ykPFQE79mX9iXFifMojZE0OGmkedZicuENGdQxgq2c1oKGgNlmFpmJY54K8s5FbRoP2+zmtIorYlCCat5i/6g+U6xPDGH/lk8zmXdYgPs4x6yY54zm7vZx4Bu1is8HuVO0AQmsU0nOh7qWRGHhbJYTr3OFA+zjUnxJH8yL+kc1QWqpb1zMBxUUMk93MdiccZpNH81HbrX81vD+aNCPns1x00+6qk0lPlCXuQC/YwwxhD7uSXiGgqVHMSnWWWvCdZNIJcaDfkj7AjrAQL4mU6qnzNlrovZ4Y9ZrxUvNSIcjBkOntbIZy/VEeXewX4dA3+PsFkKIItqeqVxYzxtegcdEhYeYVBjH9YH+dJyHuJh5kjvWOFlHQM7TRtZG+u5Io0c5JEbOaNdool2rvKQjpBMVnMSHyr/4evS80paJHV8j7lRrKmwRsPCRZbESr6LoxqH9SMd+WXUSN/nT9LHtjCXJ/g5j7KBVUyNcl2FH2oc3FEp4RcF7LygCRY264RnIf/UiMmxOFpuG5s1gcYLhmF9GDygeQsv6w62lvGxTs53xzUAmKjRo35WRTtBsXSqo3KEck3rCs7r3M5fqYgj+QAujkgrNFAU3fAnJadyhaWatrtp05D/KT+Nj8vRYamkzD6qoxk6U7IiKs9qhGM+jTrZX5ygTJuVZ6V1WphpfugWaeAJyqSWYt7RkP+2iTAhdrg4Ia21xeywcpok67Neaslgm4b8OkoSSD7ABskaNek0MSyqJPk/rJHu5RpHf8Cfikok8jks6UGVmSG51EuxyFqppZB/SOR/xK0JJx9grRSL1ZsJ7hZL9v+4lK2Bn0hR6VXuGxfyYQrHxap9wXniYPuxjBxRf0PKUZayQeq9mwPjxEAXb4h6Lssidc+T3MclFkgt35I+5YfjIP3XsYAuyaXqLj/pv8AskR+HD2iRWuyir4dddIwjAy0cE/U5eo+vZ2AhTlGvF7kWgKM0+WvvSh91PDDMIVF38iWjrgq/l/ZelbrWRdRxgr2GycDEoJI+QddeI7/v5JjoeJLCoHYHefE+STaFKZwUdP1LkhH0IlQk5QOa6QmaaJSecU94A3RL2jhNY9p1DJRKOt4k3VZINjxC/yBPawG1DEwTpwcqZ5JNtQZnCCQIM7VZIy0DU8UJwEhUWcnEo0PcVrRo99g2Pxv55IMUGrtxUpEyV8O9OHGL86gKZgHddOO7luAo4sc8QDEKOaKTj94U0gGw4RTSMswAPjp5kxouwVTqdNvzm6fUMdXKFtan3P1ds5iNz0JbbMdGKYLzFjwpo6qxwGvDKxho5a343WFIIBRWint3XrggRflxy4kkFJP5UNDcoUhOeo5xqJoy+LK0Z2lWOCjEJpuN8U2tJQST2Cjyoj4OwjzOSacQT5nMpSQLmTwlbW3P8nlQeE5yDcM8jytF/YIFF9s1yd7foFiAW3lTSvCrNPJH3qczKZF/OGRQzCK+yVzp5X7MKlqu/XyQndJhCsAwQyn1/zkrE3TCPUAVr17nbxNDSY9soilDbNJubh08FnQTInXLFR4LTr9aWcrhG7g+Nl5ljHdZGi78mcw6DtBl+D+W5BUvXRxgHQUyycEGM5tbmMsMnCkV5Hnp4SyNfJKoK8xppJFGGmncnPgfuvWmyrn6IU0AAAAZdEVYdFNvZnR3YXJlAHd3dy5pbmtzY2FwZS5vcmeb7jwaAAAAAElFTkSuQmCC&quot;)"></span><span class="nav-label">點餐</span></button>
@@ -2707,6 +2735,7 @@ function openMenuEditor(i){
   editingMenuIndex=i;
   const editor=document.getElementById('mgmtEditorPane');
   if(!editor)return;
+  editor.classList.remove('is-empty');
   const image=item.img?`<img class="menu-editor-image" id="menuEditorThumb" src="${item.img}"/>`:`<div class="menu-editor-image menu-editor-image-empty" id="menuEditorThumb">🍽️</div>`;
   editor.innerHTML=`
     <div class="menu-editor-card">
@@ -2738,7 +2767,7 @@ function openMenuEditor(i){
 function closeMenuEditor(){
   editingMenuIndex=null;
   const pane=document.getElementById('mgmtEditorPane');
-  if(pane)pane.innerHTML=`<div class="mgmt-editor-placeholder">選擇品項旁的 ${editIcon(14)} 開始編輯</div>`;
+  if(pane){pane.classList.add('is-empty');pane.innerHTML=`<div class="mgmt-editor-placeholder">選擇品項旁的 ${editIcon(14)} 開始編輯</div>`;}
 }
 function saveMenuEditor(){
   const i=editingMenuIndex,item=menuData[i];
