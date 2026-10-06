@@ -1740,7 +1740,7 @@ function saveMenuData(){
     const payload=JSON.stringify(menuData);
     localStorage.setItem(menuDataStorageKey,payload);
     if(localStorage.getItem(menuDataStorageKey)!==payload)throw new Error('菜單資料驗證失敗');
-    cloudMutate('saveMenu',{menu:menuData.map(({img,...m})=>m)},true);
+    cloudSaveMenu();
     return true;
   }catch(err){
     console.warn('完整菜單資料儲存失敗',err);
@@ -1832,9 +1832,9 @@ function addExpense(){
   if(amount<=0){showToast('請輸入有效金額','#E05050');p.focus();return;}
   const key=dateToYmd(getPosDate());
   if(!expenseData[key])expenseData[key]=[];
-  const expense={id:'exp_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),name,note,amount};
+  const expense={id:'exp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),date:key,name,note,amount};
   expenseData[key].push(expense);
-  cloudMutate('saveExpense',{expense:{...expense,date:key}},true);
+  cloudSaveExpense(expense).catch(cloudFail);
   n.value='';p.value='';nt.value='';
   renderExpenseList();
   showToast('已記錄支出：'+name+' $'+amount,'#27AE60');
@@ -1844,7 +1844,7 @@ function deleteExpense(key,idx){
   if(!confirm('確定刪除這筆支出嗎？'))return;
   const removed=expenseData[key][idx];
   expenseData[key].splice(idx,1);
-  if(removed)cloudMutate('deleteExpense',{id:removed.id,date:key},true);
+  cloudDeleteExpense(removed).catch(cloudFail);
   renderExpenseList();
   if(document.getElementById('page-report').classList.contains('active'))renderReport(rMode);
 }
@@ -1864,71 +1864,87 @@ let discountDraftType='percent';
 function setItemNote(id,v){itemNotes[id]=v;}
 
 const cloudConfigStorageKey='chillin-pos-cloud-config-v1';
-let cloudConfig=(()=>{try{return JSON.parse(localStorage.getItem(cloudConfigStorageKey)||'null')||{url:'',key:'',enabled:false};}catch(e){return {url:'',key:'',enabled:false};}})();
-let cloudSyncBusy=false;
-let cloudSyncTimer=null;
-function cloudEnabled(){return !!(cloudConfig&&cloudConfig.enabled&&cloudConfig.url);}
-function cloudUrl(action,extra=''){
-  const base=String(cloudConfig.url||'').trim();
-  if(!base)return '';
-  const sep=base.includes('?')?'&':'?';
-  return base+sep+'apiKey='+encodeURIComponent(cloudConfig.key||'')+'&action='+encodeURIComponent(action)+(extra?('&'+extra):'');
+function loadCloudConfig(){
+  try{const v=JSON.parse(localStorage.getItem(cloudConfigStorageKey)||'null');if(v&&typeof v==='object')return {url:String(v.url||''),key:String(v.key||''),enabled:v.enabled===true};}catch(e){}
+  return {url:'https://script.google.com/macros/s/AKfycbzq6KNy7zxkVRXXWu8_MKWG-LiIv5rOyjAj-tAYTm9Bg-ccTDFSmxgPk5W8w0xhYRQI/exec',key:'iquidbuilding',enabled:true};
 }
-async function cloudGet(action,extra=''){
+let cloudConfig=loadCloudConfig();
+let cloudSyncBusy=false,cloudSyncTimer=null;
+function cloudEnabled(){return !!(cloudConfig&&cloudConfig.enabled&&cloudConfig.url&&cloudConfig.key);}
+function cloudUrl(action){return cloudConfig.url+(cloudConfig.url.includes('?')?'&':'?')+'apiKey='+encodeURIComponent(cloudConfig.key)+'&action='+encodeURIComponent(action);}
+async function cloudGetData(){
   if(!cloudEnabled())return null;
-  const r=await fetch(cloudUrl(action,extra),{method:'GET',cache:'no-store'});
-  const data=await r.json();
-  if(!r.ok||data.ok===false)throw new Error(data.error||('HTTP '+r.status));
-  return data;
+  const r=await fetch(cloudUrl('getData'),{method:'GET',cache:'no-store'});
+  const j=await r.json();
+  if(!j.ok)throw new Error(j.error||'雲端讀取失敗');
+  return j;
 }
-async function cloudPost(action,payload={}){
+async function cloudPost(action,payload){
   if(!cloudEnabled())return null;
-  const r=await fetch(cloudUrl(action),{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({apiKey:cloudConfig.key||'',action,payload})});
-  const data=await r.json();
-  if(!r.ok||data.ok===false)throw new Error(data.error||('HTTP '+r.status));
-  return data;
+  const r=await fetch(cloudConfig.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({apiKey:cloudConfig.key,action,payload})});
+  const j=await r.json();
+  if(!j.ok)throw new Error(j.error||'雲端寫入失敗');
+  return j;
 }
-function saveCloudConfigLocal(){try{localStorage.setItem(cloudConfigStorageKey,JSON.stringify(cloudConfig));}catch(e){}}
-async function cloudMutate(action,payload,quiet=false){
+function cloudFail(err){console.warn('津丘 POS 雲端同步失敗',err);updateCloudStatusUI('err');}
+function queueCloud(fn,delay=250){
   if(!cloudEnabled())return;
-  try{await cloudPost(action,payload);updateCloudStatusUI('on');}
-  catch(e){updateCloudStatusUI('err');if(!quiet)showToast('雲端同步失敗：'+e.message,'#E05050');console.warn('cloud sync',action,e);}
+  clearTimeout(cloudSyncTimer);
+  cloudSyncTimer=setTimeout(()=>Promise.resolve().then(fn).catch(cloudFail),delay);
 }
-async function loadCloudData(silent=false){
+function cloudOrderPayload(o){return {...o,id:String(o.id||('ord_'+Date.now()+'_'+Math.random().toString(36).slice(2,8))),ts:new Date(o.ts||Date.now()).toISOString()};}
+function ensureOrderId(o){if(!o.id)o.id='ord_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);return o;}
+function saveOrdersLocal(){try{localStorage.setItem('chillin-pos-orders-v1',JSON.stringify(orderHistory.map(o=>({...o,sel:false}))));}catch(e){console.warn('訂單本機儲存失敗',e);}}
+function loadOrdersLocal(){try{const a=JSON.parse(localStorage.getItem('chillin-pos-orders-v1')||'[]');return Array.isArray(a)?a.map(ensureOrderId).filter(o=>o.items&&o.items.length):[];}catch(e){return [];}}
+async function cloudSaveOrder(o){ensureOrderId(o);saveOrdersLocal();if(!cloudEnabled())return;updateCloudStatusUI('wait');await cloudPost('upsertOrder',{order:cloudOrderPayload(o)});updateCloudStatusUI('on');}
+async function cloudDeleteOrder(o){if(!o)return;saveOrdersLocal();if(!cloudEnabled())return;updateCloudStatusUI('wait');await cloudPost('deleteOrder',{id:String(o.id||'')});updateCloudStatusUI('on');}
+async function cloudSaveExpense(e){if(!e.id)e.id='exp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);if(!cloudEnabled())return;updateCloudStatusUI('wait');await cloudPost('saveExpense',{expense:{id:e.id,date:e.date,name:e.name,amount:e.amount,note:e.note||''}});updateCloudStatusUI('on');}
+async function cloudDeleteExpense(e){if(!e)return;if(!cloudEnabled())return;updateCloudStatusUI('wait');await cloudPost('deleteExpense',{id:String(e.id||'')});updateCloudStatusUI('on');}
+function cloudSaveMenu(){if(!cloudEnabled())return;const menu=menuData.map(m=>{const x={...m};delete x.img;return x;});queueCloud(()=>cloudPost('saveMenu',{menu}).then(()=>updateCloudStatusUI('on')));}
+function cloudSaveCategories(){if(!cloudEnabled())return;queueCloud(()=>cloudPost('saveCategories',{categories}).then(()=>updateCloudStatusUI('on')));}
+async function cloudPushAllLocal(){
   if(!cloudEnabled())return;
+  updateCloudStatusUI('wait');
+  await cloudPost('saveMenu',{menu:menuData.map(m=>{const x={...m};delete x.img;return x;})});
+  await cloudPost('saveCategories',{categories});
+  for(const o of orderHistory)await cloudPost('upsertOrder',{order:cloudOrderPayload(o)});
+  for(const list of Object.values(expenseData))for(const e of list){if(!e.id)e.id='exp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);await cloudPost('saveExpense',{expense:{id:e.id,date:e.date,name:e.name,amount:e.amount,note:e.note||''}});}
+  saveOrdersLocal();updateCloudStatusUI('on');
+}
+function applyCloudData(d){
+  if(!d)return;
+  if(Array.isArray(d.orders)){
+    orderHistory.splice(0,orderHistory.length,...d.orders.map(o=>{ensureOrderId(o);o.ts=new Date(o.ts);o.sel=false;o.items=(o.items||[]).filter(it=>Number(it.qty)>0);recalcOrder(o);return o;}).filter(o=>o.items.length));
+    saveOrdersLocal();
+  }
+  if(Array.isArray(d.expenses)){
+    const ex={};
+    d.expenses.forEach(e=>{const date=String(e.date||'').slice(0,10);if(!date)return;(ex[date]||(ex[date]=[])).push({id:String(e.id||''),name:String(e.name||''),amount:Number(e.amount)||0,note:String(e.note||'')});});
+    expenseData=ex;
+  }
+  if(Array.isArray(d.menu)&&d.menu.length){
+    const byId=new Map(d.menu.map(m=>[String(m.id),m]));
+    menuData=menuData.map(local=>byId.has(local.id)?{...local,...byId.get(local.id),img:local.img}:local);
+    const localIds=new Set(menuData.map(m=>m.id));
+    d.menu.forEach(m=>{if(!localIds.has(String(m.id)))menuData.push(m);});
+    menuData.sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));
+    try{localStorage.setItem(menuDataStorageKey,JSON.stringify(menuData));}catch(e){}
+  }
+  if(Array.isArray(d.categories)&&d.categories.length){categories=d.categories.map(c=>({id:String(c.id),name:String(c.name)}));saveCategories(categories);}
+  menuData.forEach(m=>{mP[m.id]=getMenuSalePrice(m);mC[m.id]=m.cost;if(qty[m.id]===undefined)qty[m.id]=0;});
+  renderCatPills();updateAiCatOptions();syncMenuCardsToCategories();renderDateBar();updateCart();renderOrders();renderReport(rMode);renderMgmt();
+}
+async function cloudStartup(){
+  if(!cloudEnabled()){updateCloudStatusUI('off');return;}
+  updateCloudStatusUI('wait');
   try{
-    updateCloudStatusUI('wait');
-    const data=await cloudGet('getData');
-    if(Array.isArray(data.orders)){
-      if(data.orders.length===0 && orderHistory.length){
-        const localOrders=orderHistory.slice();
-        for(const o of localOrders) await cloudPost('upsertOrder',{order:serializeOrder(o)});
-      }else{
-        orderHistory.length=0;
-        data.orders.forEach(o=>orderHistory.push(normalizeCloudOrder(o)));
-      }
-    }
-    if(data.expenses&&typeof data.expenses==='object'){
-      expenseData={};
-      Object.entries(data.expenses).forEach(([k,v])=>{expenseData[k]=Array.isArray(v)?v.map(e=>({...e,amount:Number(e.amount)||0})):[];});
-    }
-    if(Array.isArray(data.menu)&&data.menu.length){
-      const currentImages={};menuData.forEach(m=>{if(m.img)currentImages[m.id]=m.img;});
-      const incoming=normalizeMenuData(data.menu);
-      if(incoming){incoming.forEach(m=>{if(currentImages[m.id])m.img=currentImages[m.id];});menuData=incoming;Object.keys(mP).forEach(k=>delete mP[k]);Object.keys(mC).forEach(k=>delete mC[k]);menuData.forEach(m=>{mP[m.id]=getMenuSalePrice(m);mC[m.id]=m.cost;if(qty[m.id]===undefined)qty[m.id]=0;});}
-    }
-    if(Array.isArray(data.categories)&&data.categories.length){categories=normalizeCategories(data.categories)||categories;saveCategoriesLocalOnly(categories);}
-    renderDateBar();renderCatPills();updateAiCatOptions();syncMenuCardsToCategories();renderOrders();renderExpenseList();
-    updateCloudStatusUI('on');
-    if(!silent)showToast('已同步雲端資料','#27AE60');
-  }catch(e){updateCloudStatusUI('err');if(!silent)showToast('雲端資料讀取失敗：'+e.message,'#E05050');console.warn('cloud load',e);}
+    const d=await cloudGetData();
+    const empty=!(d.orders&&d.orders.length)&&!(d.menu&&d.menu.length)&&!(d.categories&&d.categories.length)&&!(d.expenses&&d.expenses.length);
+    if(empty){await cloudPushAllLocal();}
+    else{applyCloudData(d);updateCloudStatusUI('on');}
+  }catch(e){cloudFail(e);showToast('雲端同步失敗，暫時使用本機資料','#E05050');}
 }
-function normalizeCloudOrder(o){
-  return {id:String(o.id||('ord_'+Date.now()+'_'+Math.random().toString(36).slice(2,8))),ts:new Date(o.ts),total:Number(o.total)||0,subtotal:Number(o.subtotal)||Number(o.total)||0,discount:o.discount||null,cost:Number(o.cost)||0,profit:Number(o.profit)||0,items:Array.isArray(o.items)?o.items.map(it=>({name:String(it.name||''),qty:Number(it.qty)||0,price:Number(it.price)||0,cost:Number(it.cost)||0,note:String(it.note||'')})):[],sel:false,status:o.status==='sent'?'sent':'pending',paid:!!o.paid};
-}
-function newOrderId(){return 'ord_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);}
-function saveCategoriesLocalOnly(nextCategories){try{localStorage.setItem(categoriesStorageKey,JSON.stringify(nextCategories));writeCategoriesCookie(JSON.stringify(nextCategories));}catch(e){}}
-function scheduleCloudRefresh(){if(!cloudEnabled())return;clearTimeout(cloudSyncTimer);cloudSyncTimer=setTimeout(()=>loadCloudData(true),2500);}
+function cloudRefresh(){queueCloud(async()=>{const d=await cloudGetData();applyCloudData(d);updateCloudStatusUI('on');},100);}
 
 
 function openCloudSheet(){
@@ -1970,7 +1986,7 @@ function saveCloudSettings(){
   const on=document.getElementById('cl-on').checked;
   if(on&&!/^https:\/\//.test(url)){showToast('請先填寫有效的 GAS 網址','#E05050');return;}
   cloudConfig={url,key,enabled:on};
-  saveCloudConfigLocal();
+  try{localStorage.setItem(cloudConfigStorageKey,JSON.stringify(cloudConfig));}catch(e){}
   updateCloudStatusUI(on?'wait':'off');
   if(on)testCloudConnection();
   closeOvl('cloudOvl');
@@ -2047,7 +2063,7 @@ function saveCategories(nextCategories=categories){
     console.warn('分類本機資料儲存失敗',err);
   }
   const cookieSaved=writeCategoriesCookie(payload);
-  if(localSaved||cookieSaved){ cloudMutate('saveCategories',{categories:normalized},true); return true; }
+  if(localSaved||cookieSaved){cloudSaveCategories();return true;}
   showToast('分類未能儲存，請確認 Safari 沒有使用私密瀏覽或封鎖網站資料','#E05050');
   return false;
 }
@@ -2423,10 +2439,6 @@ function confirmClear(){
   if(!Object.values(qty).some(v=>v>0)&&!customItems.length){showToast('購物車已是空的','#9EA5BD');return;}
   document.getElementById('clearOvl').classList.add('show');
 }
-function serializeOrder(o){return {id:o.id,ts:new Date(o.ts).toISOString(),total:Number(o.total)||0,subtotal:Number(o.subtotal)||0,discount:o.discount||null,cost:Number(o.cost)||0,profit:Number(o.profit)||0,items:(o.items||[]).map(it=>({name:it.name,qty:Number(it.qty)||0,price:Number(it.price)||0,cost:Number(it.cost)||0,note:it.note||''})),status:o.status==='sent'?'sent':'pending',paid:!!o.paid};}
-function cloudOrderSave(oi,quiet=true){const o=orderHistory[oi];if(o&&o.id)cloudMutate('upsertOrder',{order:serializeOrder(o)},quiet);}
-function cloudOrderDelete(o,quiet=true){if(o&&o.id)cloudMutate('deleteOrder',{id:o.id},quiet);}
-
 function doSubmit(){
   closeOvl('submitOvl');
   const posD=getPosDate();const now=new Date();
@@ -2436,9 +2448,9 @@ function doSubmit(){
   const discAmt=calcDiscountAmount(subtotal);
   const t=subtotal-discAmt;
   const discInfo=discAmt>0?{type:cartDiscount.type,value:cartDiscount.value,amount:discAmt}:null;
-  const order={id:newOrderId(),ts,total:t,subtotal,discount:discInfo,cost:c,profit:t-c,items:li,sel:false,status:'pending',paid:false};
-  orderHistory.unshift(order);
-  cloudMutate('upsertOrder',{order:serializeOrder(order)},false);
+  const newOrder={id:'ord_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),ts,total:t,subtotal,discount:discInfo,cost:c,profit:t-c,items:li,sel:false,status:'pending',paid:false};
+  orderHistory.unshift(newOrder);
+  cloudSaveOrder(newOrder).catch(cloudFail);
   const btn=document.getElementById('submitBtn');btn.textContent='✓ 送出中...';
   setTimeout(()=>{
     menuData.forEach(m=>{
@@ -2927,7 +2939,9 @@ function deleteMenuItem(idx){
   }
 }
 
-let orderHistory=[];
+let orderHistory=loadOrdersLocal();
+
+
 let batchMode=false;
 let orderTab='pending'; // 'pending' | 'sent'
 
@@ -2995,8 +3009,8 @@ function batchDel(){
 }
 function doBatchDel(){
   const removed=orderHistory.filter(o=>o.sel);
-  removed.forEach(o=>cloudOrderDelete(o));
   for(let i=orderHistory.length-1;i>=0;i--){if(orderHistory[i].sel)orderHistory.splice(i,1);}
+  removed.forEach(o=>cloudDeleteOrder(o).catch(cloudFail));saveOrdersLocal();
   closeOvl('batchDelOvl');exitBatch();showToast('🗑 批次刪除完成','#E05050');
 }
 
@@ -3006,14 +3020,13 @@ function togglePaid(ev,oi){
   const o=orderHistory[oi];
   if(!o)return;
   o.paid=!o.paid;
-  cloudOrderSave(oi);
+  cloudSaveOrder(o).catch(cloudFail);
   renderOrders();
   showToast(o.paid?'已標記為已付款':'已標記為未付款',o.paid?'#27AE60':'#F4A234');
 }
 function markAsSent(oi){
-  if(!orderHistory[oi])return;
   orderHistory[oi].status='sent';
-  cloudOrderSave(oi);
+  cloudSaveOrder(orderHistory[oi]).catch(cloudFail);
   renderOrders();
   showToast('已移至已送餐','#27AE60');
 }
@@ -3021,7 +3034,7 @@ function markAsSent(oi){
 function markSelectedSent(){
   const selected=orderHistory.filter(o=>o.sel&&o.status==='pending');
   if(!selected.length){showToast('請先勾選訂單','#9EA5BD');return;}
-  selected.forEach(o=>{o.status='sent';cloudOrderSave(orderHistory.indexOf(o));});
+  selected.forEach(o=>{o.status='sent';cloudSaveOrder(o).catch(cloudFail);});
   exitBatch();
   setOrderTab('sent');
   showToast('已送餐 '+selected.length+' 筆','#27AE60');
@@ -3078,12 +3091,12 @@ function applyOrderDiscount(){
   if(value<0){showToast('請輸入有效數值','#E05050');return;}
   if(orderDiscountDraftType==='percent'&&value>100){showToast('百分比不可超過100','#E05050');return;}
   o.discount=value>0?{type:orderDiscountDraftType,value,amount:0}:null;
-  recalcOrder(o);closeOvl('orderDiscountOvl');orderDiscountOi=null;renderOrders();reopenOrderCard(oi);
+  recalcOrder(o);cloudSaveOrder(o).catch(cloudFail);closeOvl('orderDiscountOvl');orderDiscountOi=null;renderOrders();reopenOrderCard(oi);
   showToast(value>0?'訂單折扣已套用':'已清除折扣','#27AE60');
 }
 function clearOrderDiscount(){
   const oi=orderDiscountOi,o=orderHistory[oi];if(!o)return;
-  o.discount=null;recalcOrder(o);cloudOrderSave(oi);closeOvl('orderDiscountOvl');orderDiscountOi=null;renderOrders();reopenOrderCard(oi);
+  o.discount=null;recalcOrder(o);cloudSaveOrder(o).catch(cloudFail);closeOvl('orderDiscountOvl');orderDiscountOi=null;renderOrders();reopenOrderCard(oi);
   showToast('🗑 已清除訂單折扣','#F4A234');
 }
 function cancelOrderDiscount(){orderDiscountOi=null;closeOvl('orderDiscountOvl');}
@@ -3148,15 +3161,15 @@ function renderOrders(){
 }
 
 function toggleOCard(oi){if(batchMode)return;document.getElementById('ocard-'+oi).classList.toggle('expanded');}
-function chOQ(oi,ii,d){const o=orderHistory[oi];if(!o||!o.items[ii])return;o.items[ii].qty=Math.max(0,o.items[ii].qty+d);recalcOrder(o);cloudOrderSave(oi);const q=document.getElementById('oq-'+oi+'-'+ii),s=document.getElementById('os-'+oi+'-'+ii);if(q)q.textContent=o.items[ii].qty;if(s)s.textContent='$'+(o.items[ii].price*o.items[ii].qty).toLocaleString();}
-function delOItem(oi,ii){const o=orderHistory[oi];if(!o)return;o.items.splice(ii,1);recalcOrder(o);cloudOrderSave(oi);renderOrders();reopenOrderCard(oi);}
-function addOItem(oi){const sel=document.getElementById('osel-'+oi);const m=menuData.find(x=>x.id===sel.value);if(!m)return;const o=orderHistory[oi];o.items.push({name:m.name,qty:1,price:getMenuSalePrice(m),cost:m.cost});recalcOrder(o);cloudOrderSave(oi);renderOrders();reopenOrderCard(oi);showToast('已新增：'+m.name,'#27AE60');}
-function addOCustom(oi){const n=document.getElementById('ocn-'+oi),p=document.getElementById('ocp-'+oi);const name=n.value.trim(),price=parseInt(p.value)||0;if(!name||price<=0){showToast('請填寫品項與金額','#E05050');return;}const o=orderHistory[oi];o.items.push({name,qty:1,price,cost:0});recalcOrder(o);cloudOrderSave(oi);renderOrders();reopenOrderCard(oi);showToast('已加入：'+name,'#27AE60');}
-function saveOCard(oi){const o=orderHistory[oi];if(!o)return;const dtEl=document.getElementById('odt-'+oi);if(dtEl&&dtEl.value)o.ts=new Date(dtEl.value);o.items=o.items.filter(it=>it.qty>0);recalcOrder(o);cloudOrderSave(oi,false);renderOrders();showToast('訂單已更新','#27AE60');}
+function chOQ(oi,ii,d){const o=orderHistory[oi];o.items[ii].qty=Math.max(0,o.items[ii].qty+d);recalcOrder(o);cloudSaveOrder(o).catch(cloudFail);const q=document.getElementById('oq-'+oi+'-'+ii),s=document.getElementById('os-'+oi+'-'+ii);if(q)q.textContent=o.items[ii].qty;if(s)s.textContent='$'+(o.items[ii].price*o.items[ii].qty).toLocaleString();}
+function delOItem(oi,ii){const o=orderHistory[oi];o.items.splice(ii,1);recalcOrder(o);if(!o.items.length){orderHistory.splice(oi,1);cloudDeleteOrder(o).catch(cloudFail);renderOrders();return;}cloudSaveOrder(o).catch(cloudFail);renderOrders();reopenOrderCard(oi);}
+function addOItem(oi){const sel=document.getElementById('osel-'+oi);const m=menuData.find(x=>x.id===sel.value);if(!m)return;const o=orderHistory[oi];o.items.push({name:m.name,qty:1,price:getMenuSalePrice(m),cost:m.cost});recalcOrder(o);cloudSaveOrder(o).catch(cloudFail);renderOrders();reopenOrderCard(oi);showToast('已新增：'+m.name,'#27AE60');}
+function addOCustom(oi){const n=document.getElementById('ocn-'+oi),p=document.getElementById('ocp-'+oi);const name=n.value.trim(),price=parseInt(p.value)||0;if(!name||price<=0){showToast('請填寫品項與金額','#E05050');return;}const o=orderHistory[oi];o.items.push({name,qty:1,price,cost:0});recalcOrder(o);cloudSaveOrder(o).catch(cloudFail);renderOrders();reopenOrderCard(oi);showToast('已加入：'+name,'#27AE60');}
+function saveOCard(oi){const o=orderHistory[oi];const dtEl=document.getElementById('odt-'+oi);if(dtEl&&dtEl.value)o.ts=new Date(dtEl.value);o.items=o.items.filter(it=>it.qty>0);recalcOrder(o);if(o.items.length)cloudSaveOrder(o).catch(cloudFail);else{orderHistory.splice(oi,1);cloudDeleteOrder(o).catch(cloudFail);}renderOrders();showToast('訂單已更新','#27AE60');}
 let pendingDelOi=null;
 function askDelOrder(oi){pendingDelOi=oi;document.getElementById('delOvl').classList.add('show');}
-function doDelOrder(){if(pendingDelOi===null)return;const o=orderHistory[pendingDelOi];cloudOrderDelete(o,false);orderHistory.splice(pendingDelOi,1);pendingDelOi=null;closeOvl('delOvl');renderOrders();showToast('🗑 訂單已刪除','#E05050');}
-function addNewOrder(dateStr){const p=dateStr.split('/');const ts=new Date(+p[0],+p[1]-1,+p[2],12,0,0);const m=menuData.find(x=>x.active);if(!m){showToast('請先新增或啟用菜單品項','#E05050');return;}const salePrice=getMenuSalePrice(m);const order={id:newOrderId(),ts,total:salePrice,subtotal:salePrice,discount:null,cost:m.cost,profit:salePrice-m.cost,items:[{name:m.name,qty:1,price:salePrice,cost:m.cost}],sel:false,status:'pending',paid:false};orderHistory.unshift(order);cloudMutate('upsertOrder',{order:serializeOrder(order)},false);renderOrders();showToast('已新增訂單','#27AE60');setTimeout(()=>{const c=document.querySelector('.ocard');if(c)c.classList.add('expanded');},60);}
+function doDelOrder(){if(pendingDelOi===null)return;const removed=orderHistory[pendingDelOi];orderHistory.splice(pendingDelOi,1);cloudDeleteOrder(removed).catch(cloudFail);pendingDelOi=null;closeOvl('delOvl');renderOrders();showToast('🗑 訂單已刪除','#E05050');}
+function addNewOrder(dateStr){const p=dateStr.split('/');const ts=new Date(+p[0],+p[1]-1,+p[2],12,0,0);const m=menuData.find(x=>x.active);if(!m){showToast('請先新增或啟用菜單品項','#E05050');return;}const salePrice=getMenuSalePrice(m);const newOrder={id:'ord_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),ts,total:salePrice,subtotal:salePrice,discount:null,cost:m.cost,profit:salePrice-m.cost,items:[{name:m.name,qty:1,price:salePrice,cost:m.cost}],sel:false,status:'pending',paid:false};orderHistory.unshift(newOrder);cloudSaveOrder(newOrder).catch(cloudFail);renderOrders();showToast('已新增訂單','#27AE60');setTimeout(()=>{const c=document.querySelector('.ocard');if(c)c.classList.add('expanded');},60);}
 
 let rMode='today';
 let reportDayOffset=0;
@@ -3345,7 +3358,7 @@ function saveReportMenuEdits(){
     if(!name||qty<=0){const at=ref.order.items.indexOf(ref.item);if(at>=0)ref.order.items.splice(at,1);}
     else{ref.item.name=name;ref.item.qty=qty;ref.item.price=price;}
   });
-  touched.forEach(order=>{if(order.items.length){recalcOrder(order);cloudOrderSave(orderHistory.indexOf(order));}else cloudOrderDelete(order);});
+  touched.forEach(order=>{if(order.items.length){recalcOrder(order);cloudSaveOrder(order).catch(cloudFail);}else{cloudDeleteOrder(order).catch(cloudFail);}});
   for(let i=orderHistory.length-1;i>=0;i--){if(!orderHistory[i].items.length)orderHistory.splice(i,1);}
   reportMenuEditRefs=[];closeOvl('reportMenuEditOvl');renderOrders();renderReport(rMode);showToast('銷售品項已更新','#27AE60');
 }
@@ -3355,7 +3368,7 @@ function deleteReportMenuGroup(dayKey,itemName){
   if(!confirm(`確定刪除 ${dayKey} 的「${itemName}」全部 ${refs.length} 筆明細嗎？`))return;
   const touched=new Set();
   refs.forEach(ref=>{const at=ref.order.items.indexOf(ref.item);if(at>=0)ref.order.items.splice(at,1);touched.add(ref.order);});
-  touched.forEach(order=>{if(order.items.length){recalcOrder(order);cloudOrderSave(orderHistory.indexOf(order));}else cloudOrderDelete(order);});
+  touched.forEach(order=>{if(order.items.length){recalcOrder(order);cloudSaveOrder(order).catch(cloudFail);}else{cloudDeleteOrder(order).catch(cloudFail);}});
   for(let i=orderHistory.length-1;i>=0;i--){if(!orderHistory[i].items.length)orderHistory.splice(i,1);}
   renderOrders();renderReport(rMode);showToast('銷售品項已刪除','#E05050');
 }
@@ -3370,7 +3383,7 @@ function saveReportExpenseEdit(){
   const item=expenseData[key]&&expenseData[key][index];if(!item)return;
   const name=document.getElementById('report-expense-name').value.trim(),amount=Math.max(0,parseInt(document.getElementById('report-expense-amount').value)||0),note=document.getElementById('report-expense-note').value.trim();
   if(!name||amount<=0){showToast('請填寫支出項目與有效金額','#E05050');return;}
-  item.name=name;item.amount=amount;item.note=note;cloudMutate('saveExpense',{expense:{...item,date:key}},true);closeOvl('reportExpenseEditOvl');renderExpenseList();
+  item.name=name;item.amount=amount;item.note=note;item.date=key;cloudSaveExpense(item).catch(cloudFail);closeOvl('reportExpenseEditOvl');renderExpenseList();
   if(document.getElementById('page-report').classList.contains('active'))renderReport(rMode);
   showToast('支出已更新','#27AE60');
 }
@@ -3448,6 +3461,6 @@ syncMenuCardsToCategories();
 renderDateBar();updateCart();renderCatPills();updateAiCatOptions();
 // 啟動時固定從「點餐」頁開始，不沿用任何先前頁面狀態
 showPage('pos');
-if(cloudEnabled()){ updateCloudStatusUI('wait'); loadCloudData(true); setInterval(()=>loadCloudData(true),15000); document.addEventListener('visibilitychange',()=>{if(!document.hidden)loadCloudData(true);}); }
+cloudStartup();
 </script>
 </body></html>
