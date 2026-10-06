@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>津樓</title>
+<title>津丘 Chill-In</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -1865,61 +1865,196 @@ function setItemNote(id,v){itemNotes[id]=v;}
 
 const cloudConfigStorageKey='chillin-pos-cloud-config-v1';
 function loadCloudConfig(){
-  try{const v=JSON.parse(localStorage.getItem(cloudConfigStorageKey)||'null');if(v&&typeof v==='object')return {url:String(v.url||''),key:String(v.key||''),enabled:v.enabled===true};}catch(e){}
+  try{
+    const v=JSON.parse(localStorage.getItem(cloudConfigStorageKey)||'null');
+    if(v&&typeof v==='object')return {url:String(v.url||''),key:String(v.key||''),enabled:v.enabled===true};
+  }catch(e){}
   return {url:'https://script.google.com/macros/s/AKfycbzq6KNy7zxkVRXXWu8_MKWG-LiIv5rOyjAj-tAYTm9Bg-ccTDFSmxgPk5W8w0xhYRQI/exec',key:'iquidbuilding',enabled:true};
 }
 let cloudConfig=loadCloudConfig();
-let cloudSyncBusy=false,cloudSyncTimer=null;
+
+/* ═══════════════════════════════════════════════════════════════
+   雲端同步 V2
+   - 啟動時自動抓雲端資料
+   - 不需要每次重新整理
+   - 不需要重新打開「雲端同步設定」
+   - 寫入採序列佇列，避免連續操作互相覆蓋
+   - 失敗自動重試（最多 5 次，退避 1/2/4/8/16 秒）
+   - 每 10 秒背景檢查一次雲端
+   - 切回分頁／恢復網路時立即同步
+   ═══════════════════════════════════════════════════════════════ */
+let cloudSyncBusy=false;
+let cloudPullBusy=false;
+let cloudRetryTimer=null;
+let cloudPollTimer=null;
+let cloudQueue=[];
+let cloudLastSyncAt=0;
+let cloudHasPendingWrites=false;
+
 function cloudEnabled(){return !!(cloudConfig&&cloudConfig.enabled&&cloudConfig.url&&cloudConfig.key);}
 function cloudUrl(action){return cloudConfig.url+(cloudConfig.url.includes('?')?'&':'?')+'apiKey='+encodeURIComponent(cloudConfig.key)+'&action='+encodeURIComponent(action);}
+
 async function cloudGetData(){
   if(!cloudEnabled())return null;
   const r=await fetch(cloudUrl('getData'),{method:'GET',cache:'no-store'});
   const j=await r.json();
-  if(!j.ok)throw new Error(j.error||'雲端讀取失敗');
+  if(!r.ok||!j.ok)throw new Error(j.error||('雲端讀取失敗（HTTP '+r.status+'）'));
   return j;
 }
+
 async function cloudPost(action,payload){
   if(!cloudEnabled())return null;
-  const r=await fetch(cloudConfig.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({apiKey:cloudConfig.key,action,payload})});
+  const r=await fetch(cloudConfig.url,{
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({apiKey:cloudConfig.key,action,payload})
+  });
   const j=await r.json();
-  if(!j.ok)throw new Error(j.error||'雲端寫入失敗');
+  if(!r.ok||!j.ok)throw new Error(j.error||('雲端寫入失敗（HTTP '+r.status+'）'));
   return j;
 }
-function cloudFail(err){console.warn('津丘 POS 雲端同步失敗',err);updateCloudStatusUI('err');}
-function queueCloud(fn,delay=250){
-  if(!cloudEnabled())return;
-  clearTimeout(cloudSyncTimer);
-  cloudSyncTimer=setTimeout(()=>Promise.resolve().then(fn).catch(cloudFail),delay);
+
+function cloudFail(err){
+  console.warn('津丘 POS 雲端同步失敗',err);
+  updateCloudStatusUI('err');
 }
-function cloudOrderPayload(o){return {...o,id:String(o.id||('ord_'+Date.now()+'_'+Math.random().toString(36).slice(2,8))),ts:new Date(o.ts||Date.now()).toISOString()};}
-function ensureOrderId(o){if(!o.id)o.id='ord_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);return o;}
-function saveOrdersLocal(){try{localStorage.setItem('chillin-pos-orders-v1',JSON.stringify(orderHistory.map(o=>({...o,sel:false}))));}catch(e){console.warn('訂單本機儲存失敗',e);}}
-function loadOrdersLocal(){try{const a=JSON.parse(localStorage.getItem('chillin-pos-orders-v1')||'[]');return Array.isArray(a)?a.map(ensureOrderId).filter(o=>o.items&&o.items.length):[];}catch(e){return [];}}
-async function cloudSaveOrder(o){ensureOrderId(o);saveOrdersLocal();if(!cloudEnabled())return;updateCloudStatusUI('wait');await cloudPost('upsertOrder',{order:cloudOrderPayload(o)});updateCloudStatusUI('on');}
-async function cloudDeleteOrder(o){if(!o)return;saveOrdersLocal();if(!cloudEnabled())return;updateCloudStatusUI('wait');await cloudPost('deleteOrder',{id:String(o.id||'')});updateCloudStatusUI('on');}
-async function cloudSaveExpense(e){if(!e.id)e.id='exp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);if(!cloudEnabled())return;updateCloudStatusUI('wait');await cloudPost('saveExpense',{expense:{id:e.id,date:e.date,name:e.name,amount:e.amount,note:e.note||''}});updateCloudStatusUI('on');}
-async function cloudDeleteExpense(e){if(!e)return;if(!cloudEnabled())return;updateCloudStatusUI('wait');await cloudPost('deleteExpense',{id:String(e.id||'')});updateCloudStatusUI('on');}
-function cloudSaveMenu(){if(!cloudEnabled())return;const menu=menuData.map(m=>{const x={...m};delete x.img;return x;});queueCloud(()=>cloudPost('saveMenu',{menu}).then(()=>updateCloudStatusUI('on')));}
-function cloudSaveCategories(){if(!cloudEnabled())return;queueCloud(()=>cloudPost('saveCategories',{categories}).then(()=>updateCloudStatusUI('on')));}
+
+function cloudOrderPayload(o){
+  ensureOrderId(o);
+  return {...o,id:String(o.id),ts:new Date(o.ts||Date.now()).toISOString()};
+}
+function ensureOrderId(o){
+  if(!o.id)o.id='ord_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  return o;
+}
+function saveOrdersLocal(){
+  try{localStorage.setItem('chillin-pos-orders-v1',JSON.stringify(orderHistory.map(o=>({...o,sel:false}))));}
+  catch(e){console.warn('訂單本機儲存失敗',e);}
+}
+function loadOrdersLocal(){
+  try{
+    const a=JSON.parse(localStorage.getItem('chillin-pos-orders-v1')||'[]');
+    return Array.isArray(a)?a.map(ensureOrderId).filter(o=>o.items&&o.items.length):[];
+  }catch(e){return [];}
+}
+
+function cloudQueueAdd(label,fn){
+  if(!cloudEnabled())return;
+  cloudQueue.push({label,fn,tries:0});
+  cloudHasPendingWrites=true;
+  updateCloudStatusUI('wait');
+  cloudFlushQueue();
+}
+
+async function cloudFlushQueue(){
+  if(cloudSyncBusy||!cloudEnabled()||!cloudQueue.length)return;
+  cloudSyncBusy=true;
+  if(cloudRetryTimer){clearTimeout(cloudRetryTimer);cloudRetryTimer=null;}
+  try{
+    while(cloudQueue.length&&cloudEnabled()){
+      const job=cloudQueue[0];
+      try{
+        await job.fn();
+        cloudQueue.shift();
+        job.tries=0;
+        cloudLastSyncAt=Date.now();
+      }catch(err){
+        job.tries=(job.tries||0)+1;
+        console.warn('雲端同步工作失敗：',job.label,err);
+        updateCloudStatusUI('err');
+        if(job.tries>=5){
+          /* 保留在本機，不因一次網路錯誤而遺失訂單；稍後背景輪詢會再嘗試 */
+          cloudRetryTimer=setTimeout(()=>cloudFlushQueue(),16000);
+          break;
+        }
+        const delay=Math.min(16000,1000*Math.pow(2,job.tries-1));
+        cloudRetryTimer=setTimeout(()=>cloudFlushQueue(),delay);
+        break;
+      }
+    }
+  }finally{
+    cloudSyncBusy=false;
+    cloudHasPendingWrites=cloudQueue.length>0;
+    if(!cloudQueue.length)updateCloudStatusUI('on');
+  }
+}
+
+async function cloudSaveOrder(o){
+  ensureOrderId(o);
+  saveOrdersLocal();
+  if(!cloudEnabled())return;
+  const payload=cloudOrderPayload(o);
+  cloudQueueAdd('訂單：'+payload.id,()=>cloudPost('upsertOrder',{order:payload}));
+}
+
+async function cloudDeleteOrder(o){
+  if(!o)return;
+  saveOrdersLocal();
+  if(!cloudEnabled())return;
+  const id=String(o.id||'');
+  cloudQueueAdd('刪除訂單：'+id,()=>cloudPost('deleteOrder',{id}));
+}
+
+async function cloudSaveExpense(e){
+  if(!e.id)e.id='exp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  if(!cloudEnabled())return;
+  const payload={id:e.id,date:e.date,name:e.name,amount:e.amount,note:e.note||''};
+  cloudQueueAdd('支出：'+e.id,()=>cloudPost('saveExpense',{expense:payload}));
+}
+
+async function cloudDeleteExpense(e){
+  if(!e||!cloudEnabled())return;
+  const id=String(e.id||'');
+  cloudQueueAdd('刪除支出：'+id,()=>cloudPost('deleteExpense',{id}));
+}
+
+function cloudMenuPayload(){
+  return menuData.map(m=>{const x={...m};delete x.img;return x;});
+}
+function cloudSaveMenu(){
+  if(!cloudEnabled())return;
+  const menu=cloudMenuPayload();
+  cloudQueueAdd('同步菜單',()=>cloudPost('saveMenu',{menu}));
+}
+function cloudSaveCategories(){
+  if(!cloudEnabled())return;
+  const cats=categories.map(c=>({id:String(c.id),name:String(c.name)}));
+  cloudQueueAdd('同步分類',()=>cloudPost('saveCategories',{categories:cats}));
+}
+
 async function cloudPushAllLocal(){
   if(!cloudEnabled())return;
   updateCloudStatusUI('wait');
-  await cloudPost('saveMenu',{menu:menuData.map(m=>{const x={...m};delete x.img;return x;})});
-  await cloudPost('saveCategories',{categories});
+  const menu=cloudMenuPayload();
+  const cats=categories.map(c=>({id:String(c.id),name:String(c.name)}));
+  await cloudPost('saveMenu',{menu});
+  await cloudPost('saveCategories',{categories:cats});
   for(const o of orderHistory)await cloudPost('upsertOrder',{order:cloudOrderPayload(o)});
-  for(const list of Object.values(expenseData))for(const e of list){if(!e.id)e.id='exp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);await cloudPost('saveExpense',{expense:{id:e.id,date:e.date,name:e.name,amount:e.amount,note:e.note||''}});}
-  saveOrdersLocal();updateCloudStatusUI('on');
+  for(const list of Object.values(expenseData))for(const e of list){
+    if(!e.id)e.id='exp_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+    await cloudPost('saveExpense',{expense:{id:e.id,date:e.date,name:e.name,amount:e.amount,note:e.note||''}});
+  }
+  saveOrdersLocal();
+  cloudLastSyncAt=Date.now();
+  updateCloudStatusUI('on');
 }
+
 function applyCloudData(d){
   if(!d)return;
   if(Array.isArray(d.orders)){
-    orderHistory.splice(0,orderHistory.length,...d.orders.map(o=>{ensureOrderId(o);o.ts=new Date(o.ts);o.sel=false;o.items=(o.items||[]).filter(it=>Number(it.qty)>0);recalcOrder(o);return o;}).filter(o=>o.items.length));
+    orderHistory.splice(0,orderHistory.length,...d.orders.map(o=>{
+      ensureOrderId(o);o.ts=new Date(o.ts);o.sel=false;
+      o.items=(o.items||[]).filter(it=>Number(it.qty)>0);
+      recalcOrder(o);return o;
+    }).filter(o=>o.items.length));
     saveOrdersLocal();
   }
   if(Array.isArray(d.expenses)){
     const ex={};
-    d.expenses.forEach(e=>{const date=String(e.date||'').slice(0,10);if(!date)return;(ex[date]||(ex[date]=[])).push({id:String(e.id||''),name:String(e.name||''),amount:Number(e.amount)||0,note:String(e.note||'')});});
+    d.expenses.forEach(e=>{
+      const date=String(e.date||'').slice(0,10);if(!date)return;
+      (ex[date]||(ex[date]=[])).push({id:String(e.id||''),name:String(e.name||''),amount:Number(e.amount)||0,note:String(e.note||'')});
+    });
     expenseData=ex;
   }
   if(Array.isArray(d.menu)&&d.menu.length){
@@ -1930,28 +2065,68 @@ function applyCloudData(d){
     menuData.sort((a,b)=>(Number(a.order)||0)-(Number(b.order)||0));
     try{localStorage.setItem(menuDataStorageKey,JSON.stringify(menuData));}catch(e){}
   }
-  if(Array.isArray(d.categories)&&d.categories.length){categories=d.categories.map(c=>({id:String(c.id),name:String(c.name)}));saveCategories(categories);}
+  if(Array.isArray(d.categories)&&d.categories.length){
+    categories=d.categories.map(c=>({id:String(c.id),name:String(c.name)}));
+    saveCategories(categories);
+  }
   menuData.forEach(m=>{mP[m.id]=getMenuSalePrice(m);mC[m.id]=m.cost;if(qty[m.id]===undefined)qty[m.id]=0;});
   renderCatPills();updateAiCatOptions();syncMenuCardsToCategories();renderDateBar();updateCart();renderOrders();renderReport(rMode);renderMgmt();
 }
+
+async function cloudPullNow(force=false){
+  if(!cloudEnabled()||cloudPullBusy)return;
+  if(!force&&cloudHasPendingWrites)return;
+  cloudPullBusy=true;
+  updateCloudStatusUI('wait');
+  try{
+    const d=await cloudGetData();
+    applyCloudData(d);
+    cloudLastSyncAt=Date.now();
+    updateCloudStatusUI('on');
+  }catch(e){cloudFail(e);}
+  finally{cloudPullBusy=false;}
+}
+
 async function cloudStartup(){
   if(!cloudEnabled()){updateCloudStatusUI('off');return;}
   updateCloudStatusUI('wait');
   try{
     const d=await cloudGetData();
     const empty=!(d.orders&&d.orders.length)&&!(d.menu&&d.menu.length)&&!(d.categories&&d.categories.length)&&!(d.expenses&&d.expenses.length);
-    if(empty){await cloudPushAllLocal();}
+    if(empty)await cloudPushAllLocal();
     else{applyCloudData(d);updateCloudStatusUI('on');}
-  }catch(e){cloudFail(e);showToast('雲端同步失敗，暫時使用本機資料','#E05050');}
+  }catch(e){cloudFail(e);showToast('雲端暫時無法連線，仍可正常點餐','#E05050');}
+  cloudStartBackgroundSync();
 }
-function cloudRefresh(){queueCloud(async()=>{const d=await cloudGetData();applyCloudData(d);updateCloudStatusUI('on');},100);}
 
+function cloudRefresh(){cloudPullNow(true);}
+
+function cloudStartBackgroundSync(){
+  if(cloudPollTimer)clearInterval(cloudPollTimer);
+  cloudPollTimer=setInterval(()=>{
+    if(document.visibilityState==='visible'&&navigator.onLine)cloudPullNow(false);
+  },10000);
+}
+
+window.addEventListener('online',()=>{
+  if(cloudEnabled()){updateCloudStatusUI('wait');cloudFlushQueue();cloudPullNow(true);}
+});
+window.addEventListener('offline',()=>updateCloudStatusUI('err'));
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&cloudEnabled()){
+    cloudFlushQueue();
+    cloudPullNow(false);
+  }
+});
+window.addEventListener('focus',()=>{
+  if(cloudEnabled())cloudPullNow(false);
+});
 
 function openCloudSheet(){
   document.getElementById('cl-url').value=cloudConfig.url;
   document.getElementById('cl-key').value=cloudConfig.key;
   document.getElementById('cl-on').checked=cloudConfig.enabled;
-  document.getElementById('cloudTestResult').textContent=cloudConfig.url?'尚未測試連線':'尚未測試連線';
+  document.getElementById('cloudTestResult').textContent=cloudConfig.url?'已設定，可直接使用':'尚未設定';
   document.getElementById('cloudOvl').classList.add('show');
 }
 function updateCloudStatusUI(state){
@@ -1959,26 +2134,28 @@ function updateCloudStatusUI(state){
   const txt=document.getElementById('cloudStatusTxt');
   if(!dot||!txt)return;
   dot.className='cloud-dot';
-  if(state==='on'){dot.classList.add('on');txt.textContent='已連線';}
-  else if(state==='err'){dot.classList.add('err');txt.textContent='連線失敗';}
-  else if(state==='wait'){dot.classList.add('wait');txt.textContent='連線中...';}
-  else{txt.textContent='未啟用';}
+  if(state==='on'){
+    dot.classList.add('on');
+    txt.textContent=cloudLastSyncAt?'已同步':'已連線';
+  }else if(state==='err'){
+    dot.classList.add('err');txt.textContent='同步重試中';
+  }else if(state==='wait'){
+    dot.classList.add('wait');txt.textContent='同步中...';
+  }else{txt.textContent='未啟用';}
 }
+
 async function testCloudConnection(){
   const url=document.getElementById('cl-url').value.trim();
   const key=document.getElementById('cl-key').value.trim();
   const resEl=document.getElementById('cloudTestResult');
   if(!/^https:\/\//.test(url)){resEl.textContent='⚠️ 請先貼上 GAS 網址';return;}
-  resEl.textContent='📡 測試連線中...';
-  updateCloudStatusUI('wait');
+  resEl.textContent='📡 測試連線中...';updateCloudStatusUI('wait');
   try{
-    const r=await fetch(url+(url.includes('?')?'&':'?')+'apiKey='+encodeURIComponent(key)+'&action=ping');
-    if(r.ok){resEl.textContent='連線成功';updateCloudStatusUI('on');}
-    else{resEl.textContent='⚠️ 連線失敗（狀態碼 '+r.status+'）';updateCloudStatusUI('err');}
-  }catch(e){
-    resEl.textContent='⚠️ 無法連線，請確認網址是否正確';
-    updateCloudStatusUI('err');
-  }
+    const r=await fetch(url+(url.includes('?')?'&':'?')+'apiKey='+encodeURIComponent(key)+'&action=ping',{cache:'no-store'});
+    const j=await r.json();
+    if(r.ok&&j.ok){resEl.textContent='連線成功';updateCloudStatusUI('on');}
+    else{resEl.textContent='⚠️ 連線失敗：'+(j.error||('HTTP '+r.status));updateCloudStatusUI('err');}
+  }catch(e){resEl.textContent='⚠️ 無法連線，請確認 GAS Web App 部署設定';updateCloudStatusUI('err');}
 }
 function saveCloudSettings(){
   const url=document.getElementById('cl-url').value.trim();
@@ -1988,10 +2165,11 @@ function saveCloudSettings(){
   cloudConfig={url,key,enabled:on};
   try{localStorage.setItem(cloudConfigStorageKey,JSON.stringify(cloudConfig));}catch(e){}
   updateCloudStatusUI(on?'wait':'off');
-  if(on)testCloudConnection();
+  if(on){testCloudConnection();cloudStartBackgroundSync();}
   closeOvl('cloudOvl');
   showToast('雲端同步設定已儲存','#27AE60');
 }
+
 
 const defaultCategories=[
   {id:'津丘',name:'津丘'},
