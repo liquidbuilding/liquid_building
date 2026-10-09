@@ -584,6 +584,10 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .menu-editor-image-title{font-size:12px;font-weight:800;color:var(--text);margin-bottom:4px;}
 .menu-editor-image-note{font-size:10px;color:var(--text3);line-height:1.5;}
 .menu-editor-image-btn{margin-top:8px;height:34px;padding:0 13px;border:1.5px solid var(--border2);background:white;border-radius:9px;color:var(--text2);font-size:11px;font-weight:800;cursor:pointer;}
+.menu-image-url-row{display:flex;gap:6px;align-items:center;margin-top:7px;max-width:420px;}
+.menu-image-url-input{min-width:0;flex:1;height:32px;border:1px solid var(--border2);border-radius:8px;padding:0 9px;font-size:11px;background:var(--white);color:var(--text);}
+.menu-image-url-row .menu-editor-image-btn{margin-top:0;white-space:nowrap;height:32px;padding:0 10px;}
+@media(max-width:600px){.menu-image-url-row{width:100%;}.menu-image-url-input{width:100%;font-size:10px;}}
 .menu-editor-fields{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .menu-editor-fields .efield input,.menu-editor-fields .efield select{height:46px;padding:10px 13px;font-size:14px;}
 .menu-editor-fields .menu-discount-editor{grid-column:1/-1;}
@@ -754,7 +758,12 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .ocard-items{order:0;font-size:13px;color:var(--text);font-weight:750;line-height:1.45;margin-top:0;}
 .ocard-total,.ocard-total-row{order:1;color:#D93636;font-size:17px;font-weight:900;}
 .ocard-profit{order:2;}
-.order-head-actions{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;}
+.order-head-actions{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:6px;flex-shrink:0;white-space:nowrap;}
+.order-head-actions .ocard-total{order:0;margin-right:2px;color:#D93636;font-size:17px;font-weight:900;flex-shrink:0;}
+.order-head-actions .order-status-btn{order:1;}
+.order-head-actions .paid-toggle{order:2;}
+.order-head-actions .paid-toggle{height:28px;padding:0 9px;font-size:10px;}
+@media(max-width:600px){.ocard-head{gap:7px;padding:10px 9px;}.otime-badge{font-size:10px;padding:3px 7px;}.order-head-actions{gap:4px;}.order-head-actions .ocard-total{font-size:14px!important;}.order-head-actions .order-status-btn,.order-head-actions .paid-toggle{height:25px;padding:0 6px;font-size:9px;}}
 .order-status-btn{height:28px;padding:0 9px;border-radius:999px;border:1px solid var(--green);background:var(--green-lt);color:var(--green);font-size:10px;font-weight:800;white-space:nowrap;cursor:pointer;}
 .order-status-btn.pending{border-color:var(--orange);background:var(--orange-lt);color:var(--orange);}
 .ocard{background:var(--card);border-radius:var(--r-sm);margin-bottom:8px;overflow:hidden;box-shadow:var(--shadow-sm);border:1.5px solid var(--border);transition:all .15s;}
@@ -1829,8 +1838,8 @@ function renderMenuDiscountEditor(item,idx){
     <input type="hidden" id="msd-type-${idx}" value="${type}"/>
     <div class="menu-discount-types">
       <span class="menu-discount-title">活動折扣</span>
-      <button type="button" class="menu-discount-type${type==='percent'?' active':''}" id="msd-percent-${idx}" onclick="setMenuDiscountType(${idx},'percent')">％ 百分比折扣</button>
       <button type="button" class="menu-discount-type${type==='fixed'?' active':''}" id="msd-fixed-${idx}" onclick="setMenuDiscountType(${idx},'fixed')">固定金額折扣</button>
+      <button type="button" class="menu-discount-type${type==='percent'?' active':''}" id="msd-percent-${idx}" onclick="setMenuDiscountType(${idx},'percent')">％ 百分比折扣</button>
     </div>
     <div class="menu-discount-control">
       <label id="msd-label-${idx}">${type==='percent'?'折扣百分比':'折扣金額'}</label>
@@ -2063,7 +2072,7 @@ function cloudMenuPayload(){
   const byId=new Map();
   menuData.forEach(m=>byId.set(String(m.id),m));
   defaultMenuData.forEach(m=>{if(!byId.has(String(m.id)))byId.set(String(m.id),{...m,order:getNextMenuOrder()});});
-  return Array.from(byId.values()).map(m=>{const x={...m};delete x.img;return x;});
+  return Array.from(byId.values()).map(m=>{const x={...m};if(!(typeof x.img==='string'&&/^https?:\/\//i.test(x.img)))delete x.img;return x;});
 }
 function cloudSaveMenu(){
   if(!cloudEnabled())return;
@@ -2776,6 +2785,28 @@ function getThumbOrEmoji(id){
 function triggerImageUpload(idx){
   document.getElementById('imgfile-'+idx).click();
 }
+function applyMenuImageUrl(idx){
+  const input=document.getElementById('menuImageUrl-'+idx);
+  const raw=(input&&input.value||'').trim();
+  if(!raw){showToast('請先貼上圖片網址','#E05050');return;}
+  let url;
+  try{url=new URL(raw);}catch(e){showToast('圖片網址格式不正確','#E05050');return;}
+  if(!['http:','https:'].includes(url.protocol)){showToast('請使用 http 或 https 圖片網址','#E05050');return;}
+  const item=menuData[idx];if(!item)return;
+  const testImg=new Image();
+  testImg.onload=function(){
+    const previous=item.img;
+    item.img=url.href;
+    if(!saveMenuData()){item.img=previous;return;}
+    const thumb=document.getElementById('menuEditorThumb');
+    if(thumb){if(thumb.tagName==='IMG'){thumb.src=url.href;}else{thumb.outerHTML='<img class="menu-editor-image" id="menuEditorThumb" src="'+url.href.replace(/&/g,'&amp;').replace(/"/g,'&quot;')+'"/>';}}
+    renderMgmt();
+    openMenuEditor(idx);
+    showToast('已使用圖片網址','#27AE60');
+  };
+  testImg.onerror=function(){showToast('圖片網址無法載入，請確認網址可直接開啟圖片','#E05050');};
+  testImg.src=url.href;
+}
 function resizeImageFile(file,maxSize){
   return new Promise((resolve,reject)=>{
     const img=new Image();
@@ -3090,8 +3121,8 @@ function renderMgmt(){
       </div>
       <div class="mgmt-actions">
         <button type="button" class="mgmt-edit-btn mgmt-item-edit-btn" data-menu-index="${idx}" onclick="event.stopPropagation();openMenuEditor(${idx})" title="編輯"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAAHgUExURQAAAP91XP94W/90XBdEYaZiXf/ORwAyZERNYBRDYTRRXv+tTv/1PP+xTv/Ybv/rtP/XbP//zf/ttf/Wj//tuRdEYA04WhZDYRY/Xv91XP91XP91XP91XP91XP91XP91XP91XP91XP91W/91XP91XHZYXvByXP91XBRDYRxFYP91XBdEYRdEYf91XCVMXxVDYf/YRMasTf90XP/OR//ORvJyXP92W//OR35ZXhZDYcWWUhxGYP+xTf+zTf+xTv+xTv/adf/PSv/npf/UXf/rtP/qs//rs//rtP/rtP/rtP/rtP+8Yv+zUf+wTP/vtv/rtP/rtf/qs//jpv/GdAAAGIyYiv/rtP/rtP/rtP/yxBVDYBpGYv/rtP/rtP/rtBZDYRdEYRpGYoyYi//zuP/rtBZEYRZDYRdEYRZDYAktUBdEYP91XP91W/90XH9aXvRzXBZDYRlEYH5ZXhdEYBdEYTxaXBRCYf/PRsitTTpZXH9ZXv/OR//ORsisTTpWXf/NR//ASsiYUjpUXv+/Sv+xTf+yTciXUjxVXf+wTv+xTv/NRv/NRf/Zcf/rtf/ehf/jmv/CUv+vTP+wTP+wTf/rtP/psP/dm//RiP/Hdf/qs+/grv/stHeJg/DgrhZDYAAAAG+4r2sAAABrdFJOUwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAem+76zVMDtOcftswftvkftuwftv4fth+2th+2th+2Hh+2H7Yfth8XtHb+I9iCKt8Cjf60HzPm/tl1FwSZ4IIiATzs544pCKTtmTIDUuGlOwV/kqTKCwAAAAFiS0dEAIgFHUgAAAAJcEhZcwAADdcAAA3XAUIom3gAAAAHdElNRQfqBxgEGgWbyJesAAABOElEQVQ4y2NgwA8YGSWlpGVk5eQJq1PIBgJFOfzqmJiVlLPBQAWvOhZWVbWcXLBCdbzqWDQ08/IhKrXwqtPWKSgsAqvUlcKtjo1dT7+4BKpSQRK3OjYDw9IyqEojSUbc6oxNyisqwSqrTM0YGXGrM6+uKa+tKyspKdC04MCrrr6mvqGxqaxEx5KFk4C65pbWtnZ9SxYWguo6WlqsrLmIUNfZaWPLzUOMOjt7Xt5RdaPq8Khj4HNw7CJGHb+Ak3M3EeoY+F1ce7qJUcfv1tvXRVgdA7+7R2//hJaJkyYTUOfpNWXK1GnTZ3j7+OJTJyjk5z9z5pTegMCgYGE86hhYQkJnzZ45JSw8IlKEAR8QjYqeMzcmNs6TnwE/iE+Yl5iUnEJIGQNDalp6RqYYQWUMDFmp8eISRKgDAHlUvFaI+KI/AAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAAABJRU5ErkJggg==" style="width:16px;height:16px;"/></button>
-        <button class="mgmt-edit-btn" onclick="triggerImageUpload(${idx})" title="更換圖片"><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAMAAAC7IEhfAAAAIGNIUk0AAHomAACAhAAA+gAAAIDoAAB1MAAA6mAAADqYAAAXcJy6UTwAAALEUExURQAAABSp9xSq9hWq9hSq98Pk2rvi3MPl2sPl22rNjyW7VSq9WSi8Vym8WDC+XkXDcB+6UBSp9xSp9hSp9xSp9xSq9xWq9xWq9hWq9xWp9xSp9xWq9hWq9xSp9xWq9xWp9xWp9xSp9hSq9xWq9xWq9xSp913C68Xl2sPl2sPl28Ll28Ll28Pl2xWq9xWp98Pl28Pl28Ll2xWq9xWq98Lk2xWq9sLl2xWq9xWq9hWp9xSq9hWq9hWq9hWq9hWq9hOp9wBb/1W/7Mbl3YrWqy29Wym8WCq9WSq9WS6+XCq8WTK/YCu9Wiq9WSy9WjC+Xiy9Wyu9WSq8WTC9XhWq9xOp9xGo9xSp9xKp9z659XHL9CSv9hKo90K69dLu8v7+8KXd8yOv9iyx86DZ4MTl2sLk28Pl2///8P/+8P398KXe8xWq9lG+7b7j28Pl2sLl28Lk2jy49tTu8u748ff78c/s8vn88aTd8x+t9iGu9Z/Y4MXl2sbm3M7p38fm3F3E9d/y8W3J9IzU8/X68VnC9aHc88zs8i2y9njL59ft4vH47Pr87/v87/L47Njt4hus9i+z9orU80i89Raq9l/D6//+8Um89VnB6//98GXF6c/q34TP5Syy86zd3km99WzH6Pv88Nju43XM9N7y8Ty49UW677Tg3cbl3MXl3cTl3Ciw8yGu9ji29hir9kS676vc4L7j1Z3bu4XVp4jVqaPcv7/k2MTl25zX4Uy87h6t9Q+o9yux82rH6bXg3qnew1jJgDC+Xim8WDS/YWTMi7HgzMLl2r3j25rX4XPJ51rB61W/7GLE6oHO5arc3sXl3KbdwUbEcSe8Vii8V1TIfLDgy5/Xu6XdwSq9WVTHfJXTsjyvYqTdwSm9WJbTszmuYCanTyioUbDgykjDcjmxYSi2VSiqUSenUEjEcim3ViiqUim4Vyq8WQAAAL2XOU0AAABTdFJOUwAAAAAAAAAAAAAAAAAAAAAAAzWU2vj+8MNuGA545PvDQwEOl/zljX+AgH9jHgJ6/sk3OeS+mPjd+/TKeB7JS+oBkYCAgICAf2bqH8v4gjrC++wPDHl7LAAAAAFiS0dEAIgFHUgAAAAJcEhZcwAATr0AAE69AXNqaBQAAAAHdElNRQfqBxgEGgWbyJesAAACjElEQVQ4y43S9VsUQRgH8BfF7u5GBbu7u7BmdlYRrGMN9FgR8+DEROAORDy7MDm7u1bFDjyUNc4u1L/C2fTgOG+/z/6w8+zned+ZdxYAAqpUrVa9Rs1atevULRYAvlO8Xv0GCGGGoIaNGjfxLQObNgtChJ00OQwj0rxFy+AQ77Rq3aYEtG1H3ZTwiKnTpmOEZ8w0RXLead+hI3TqjBAbHjFr9py5YTiKnTffrH+O5mmilfcu0JW6BTELY2IXLV6ylJBlyy2a4/m4+Hgrz8uLbtAdIWZFwspVq9esXZeICV6vQZ5LSk6x2VM5RUIPhEjaBpweuzEtMYMgdpPJrPZNsjlobKm8vGtANAQz6bGbGUxo9S1mBfJxyY6tDvrYrXJJ6ClJJEPphd1mUjvHpzjk2LYrsFcBSDJ2WHzA3kGeEO/cpVW0Fmrdpy9R4G4KCdmjblE/zN5MZUAQ0K8/jkLMvv0HWHqTBw8dzspyyhOh47HbbPZMbTyBAwYeYQk5euw4weTEyVOnz5w9d/6CLHnrv4FzACWDL166jJkrTNTVa9dv3LwlCLfv3HXy2hXKLptzApQKNt27/+Dho8dPnj57nvNCoHHlvnTyHv9ENse9AigdEmm2WMyRJktcXo5LEGkE12tPSeu9eStBaUEP63yX43KLopek7v2HjxrkPF0BqbhPOizgPKTqdFjI6VJzGvRyulSdCotwqtScAot0ksz9rDkZ+nBUCl++qk6Cg/J8OFF0u759/6HBMoN/+nJS8lUJUHaI8B+nS4ByQwVR9C8pHCaKBqQRKEtDUJLGoJj/yyAUf0undhuRAOWHG2DuPwAVRoiCfzgSoOKo0f6k2z0mFKBS5bHjxvvpOyF04l+E86ot0qyHuwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAAASUVORK5CYII=" style="width:16px;height:16px;"/></button>
-        <input type="file" accept="image/*" style="display:none" id="imgfile-${idx}" onchange="handleImageUpload(${idx},this)"/>
+        <button class="mgmt-edit-btn" onclick="openMenuEditor(${idx})" title="更換圖片"><img src="data:image/png;base64,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" style="width:16px;height:16px;"/></button>
+
         <button class="mgmt-edit-btn mgmt-del-btn" onclick="deleteMenuItem(${idx})">${trashIcon(15)}</button>
         <label class="tog"><input type="checkbox" ${item.active?'checked':''} onchange="toggleActive(${idx},this.checked)"><span class="tog-sl"></span></label>
       </div>
@@ -3125,7 +3156,12 @@ function openMenuEditor(i){
         <div class="menu-editor-image-info">
           <div class="menu-editor-image-title">品項圖片</div>
           <div class="menu-editor-image-note">可更換圖片並裁切。圖片更新會立即儲存。</div>
-          <button type="button" class="menu-editor-image-btn" onclick="triggerImageUpload(${i})">更換圖片</button>
+          <button type="button" class="menu-editor-image-btn" onclick="triggerImageUpload(${i})">本機上傳圖片</button>
+          <input type="file" accept="image/*" style="display:none" id="imgfile-${i}" onchange="handleImageUpload(${i},this)"/>
+          <div class="menu-image-url-row">
+            <input type="url" id="menuImageUrl-${i}" class="menu-image-url-input" placeholder="貼上圖片網址（https://...）" value="${item.img&&/^https?:\/\//i.test(item.img)?item.img.replace(/&/g,'&amp;').replace(/"/g,'&quot;'):''}"/>
+            <button type="button" class="menu-editor-image-btn" onclick="applyMenuImageUrl(${i})">使用網址</button>
+          </div>
         </div>
       </div>
       <div class="menu-editor-fields">
