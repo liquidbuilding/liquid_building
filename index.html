@@ -740,6 +740,21 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
   transition:all .15s;
 }
 .paid-toggle.paid{background:var(--green-lt);border-color:var(--green);color:var(--green);}
+
+.cloud-settings-title{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.cloud-settings-title .sheet-ico{font-size:17px;line-height:1;margin:0;}
+.cloud-settings-title h3{font-size:16px;line-height:1.2;margin:0;}
+.cloud-settings-sheet .sheet-btns .sbtn{font-size:12px;padding:8px 10px;min-height:34px;}
+.menu-discount-types{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.menu-discount-title{font-size:11px;font-weight:800;white-space:nowrap;margin:0;}
+.ocard-head{align-items:center;}
+.ocard-mid{display:flex;flex-direction:column;gap:5px;}
+.ocard-items{order:0;font-size:13px;color:var(--text);font-weight:750;line-height:1.45;margin-top:0;}
+.ocard-total,.ocard-total-row{order:1;color:#D93636;font-size:17px;font-weight:900;}
+.ocard-profit{order:2;}
+.order-head-actions{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;}
+.order-status-btn{height:28px;padding:0 9px;border-radius:999px;border:1px solid var(--green);background:var(--green-lt);color:var(--green);font-size:10px;font-weight:800;white-space:nowrap;cursor:pointer;}
+.order-status-btn.pending{border-color:var(--orange);background:var(--orange-lt);color:var(--orange);}
 .ocard{background:var(--card);border-radius:var(--r-sm);margin-bottom:8px;overflow:hidden;box-shadow:var(--shadow-sm);border:1.5px solid var(--border);transition:all .15s;}
 .ocard.expanded{border-color:var(--blue);box-shadow:0 4px 16px rgba(67,86,224,.15);}
 .ocard.picked{border-color:var(--red);background:var(--red-lt);}
@@ -1615,7 +1630,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 </div>
 
 <div class="overlay" id="cloudOvl">
-  <div class="sheet"><span class="sheet-ico">☁️</span><h3>雲端同步設定</h3>
+  <div class="sheet cloud-settings-sheet"><div class="cloud-settings-title"><span class="sheet-ico">☁️</span><h3>雲端同步設定</h3></div>
     <div class="dp-hint" style="margin-bottom:14px;text-align:left;">設定後可接收客人掃碼訂單，並自動備份訂單與菜單到 Google Sheet。</div>
     <div class="add-item-form">
       <div class="ai-field"><label>GAS 網頁應用程式網址</label><input id="cl-url" type="url" placeholder="https://script.google.com/macros/s/.../exec"/></div>
@@ -1623,7 +1638,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
       <div class="ai-field" style="flex-direction:row;align-items:center;justify-content:space-between;"><label style="margin:0;">啟用雲端同步</label><label class="tog"><input type="checkbox" id="cl-on"/><span class="tog-sl"></span></label></div>
       <div class="dp-hint" id="cloudTestResult">尚未測試連線</div>
     </div>
-    <div class="sheet-btns"><button class="sbtn cancel" onclick="testCloudConnection()">📡 測試連線</button><button class="sbtn confirm" onclick="saveCloudSettings()">✓ 儲存</button></div>
+    <div class="sheet-btns"><button class="sbtn cancel" onclick="closeOvl('cloudOvl')">取消</button><button class="sbtn cancel" onclick="testCloudConnection()">測試連線</button><button class="sbtn confirm" onclick="saveCloudSettings()">儲存</button></div>
   </div>
 </div>
 
@@ -1810,9 +1825,9 @@ function renderMenuDiscountEditor(item,idx){
   const cfg=getMenuDiscountConfig(item),type=cfg?cfg.type:'percent',value=cfg?cfg.value:'';
   const preview=menuDiscountPreviewText(item.price,type,value),active=value!=='';
   return `<div class="menu-discount-editor">
-    <div class="menu-discount-title">活動折扣（選填，設定後點餐頁顯示劃線原價＋活動價）</div>
     <input type="hidden" id="msd-type-${idx}" value="${type}"/>
     <div class="menu-discount-types">
+      <span class="menu-discount-title">活動折扣</span>
       <button type="button" class="menu-discount-type${type==='percent'?' active':''}" id="msd-percent-${idx}" onclick="setMenuDiscountType(${idx},'percent')">％ 百分比折扣</button>
       <button type="button" class="menu-discount-type${type==='fixed'?' active':''}" id="msd-fixed-${idx}" onclick="setMenuDiscountType(${idx},'fixed')">固定金額折扣</button>
     </div>
@@ -3035,6 +3050,8 @@ function setMgmtCategoryFilterByIndex(index){
   if(category)setMgmtCategoryFilter(category.id);
 }
 function renderMgmtFilters(){
+  const storedCats=loadCategories();
+  if(Array.isArray(storedCats)&&storedCats.length) categories=storedCats;
   const filterBar=document.getElementById('mgmtFilter');
   if(!filterBar)return;
   const validFilter=mgmtCategoryFilter==='全部'||mgmtCategoryFilter===''||categories.some(c=>c.id===mgmtCategoryFilter);
@@ -3279,6 +3296,14 @@ function togglePaid(ev,oi){
   renderOrders();
   showToast(o.paid?'已標記為已付款':'已標記為未付款',o.paid?'#27AE60':'#F4A234');
 }
+function toggleOrderSent(ev,oi){
+  if(ev)ev.stopPropagation();
+  const o=orderHistory[oi];if(!o)return;
+  o.status=o.status==='sent'?'pending':'sent';
+  cloudSaveOrder(o).catch(cloudFail);
+  renderOrders();
+  showToast(o.status==='sent'?'已標記為已送餐':'已改回未送餐','#27AE60');
+}
 function markAsSent(oi){
   orderHistory[oi].status='sent';
   cloudSaveOrder(orderHistory[oi]).catch(cloudFail);
@@ -3384,12 +3409,15 @@ function renderOrders(){
             ${batchMode?`<div class="ochk" onclick="toggleSel(${o.oi})">${o.sel?'✓':''}</div>`:''}
             <div class="otime-badge">${o.ts.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})}</div>
             <div class="ocard-mid" onclick="toggleOCard(${o.oi})">
-              ${o.discount&&o.discount.amount?`<div class="ocard-total-row"><span class="ocard-orig">$${(o.subtotal||o.total).toLocaleString()}</span><span class="ocard-arrow">→</span><span class="ocard-total">$${o.total.toLocaleString()}</span></div><div class="ocard-discount-badge">${discIcon(12)}折扣 -$${o.discount.amount.toLocaleString()}</div>`:`<div class="ocard-total">$${o.total.toLocaleString()}</div>`}
-              <div class="ocard-profit">利潤 +$${o.profit.toLocaleString()}</div>
               <div class="ocard-items">${o.items.map(it=>it.name+(it.qty>1?'×'+it.qty:'')).join(' · ')}</div>
+              ${o.discount&&o.discount.amount?`<div class="ocard-discount-badge">${discIcon(12)}折扣 -$${o.discount.amount.toLocaleString()}</div>`:''}
+              <div class="ocard-profit">利潤 +$${o.profit.toLocaleString()}</div>
             </div>
-            ${isPending?`<button class="send-btn" onclick="markAsSent(${o.oi})">送餐</button>`:`<div class="oexpand" onclick="toggleOCard(${o.oi})">⌄</div>`}
-            <div class="paid-toggle${o.paid?' paid':''}" onclick="togglePaid(event,${o.oi})">${o.paid?'已付款':'未付款'}</div>
+            <div class="order-head-actions">
+              <div class="ocard-total" style="color:#D93636;font-size:17px;">$${o.total.toLocaleString()}</div>
+              <button class="order-status-btn ${isPending?'pending':''}" onclick="toggleOrderSent(event,${o.oi})">${isPending?'已送餐':'未送餐'}</button>
+              <div class="paid-toggle${o.paid?' paid':''}" onclick="togglePaid(event,${o.oi})">${o.paid?'已付款':'未付款'}</div>
+            </div>
           </div>
           <div class="odetail" id="odet-${o.oi}">
             <div class="odt-edit"><label>日期時間</label><input class="odt-input" type="datetime-local" id="odt-${o.oi}" value="${toDTL(o.ts)}"/></div>
