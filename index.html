@@ -46,8 +46,10 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 .topbar-name{font-family:'Noto Serif TC',serif;font-size:20px;font-weight:900;color:var(--blue);letter-spacing:.5px;line-height:1;}
 .topbar-sub{font-size:10px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-top:3px;font-weight:600;}
 .topbar-right{display:flex;gap:10px;align-items:center;}
-.cloud-status{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:700;color:var(--text3);}
-.cloud-dot{width:8px;height:8px;border-radius:50%;background:var(--border2);flex-shrink:0;}
+.cloud-status{display:flex;align-items:center;gap:4px;font-size:9px;font-weight:700;color:var(--text3);white-space:nowrap;flex-shrink:0;}
+.cloud-dot{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0;}
+.topbar-right .cloud-status{margin-right:2px;}
+@media(max-width:380px){.cloud-status{font-size:8px;gap:3px}.cloud-dot{width:6px;height:6px}}
 .cloud-dot.on{background:var(--green);}
 .cloud-dot.err{background:var(--red);}
 .cloud-dot.wait{background:var(--orange);}
@@ -1631,7 +1633,6 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);font-fam
 
 <div class="overlay" id="cloudOvl">
   <div class="sheet cloud-settings-sheet"><div class="cloud-settings-title"><span class="sheet-ico">☁️</span><h3>雲端同步設定</h3></div>
-    <div class="dp-hint" style="margin-bottom:14px;text-align:left;">設定後可接收客人掃碼訂單，並自動備份訂單與菜單到 Google Sheet。</div>
     <div class="add-item-form">
       <div class="ai-field"><label>GAS 網頁應用程式網址</label><input id="cl-url" type="url" placeholder="https://script.google.com/macros/s/.../exec"/></div>
       <div class="ai-field"><label>API 金鑰（需與 Code.gs 的 API_KEY 相同）</label><input id="cl-key" type="text" placeholder="例：jinlou2026" maxlength="40"/></div>
@@ -1930,7 +1931,7 @@ function cloudJsonp(action,timeout=15000){
       if(data&&data.ok)resolve(data);
       else reject(new Error((data&&data.error)||'雲端回應錯誤'));
     };
-    script.onerror=()=>{cleanup();reject(new Error('JSONP 無法載入 GAS Web App'));};
+    script.onerror=()=>{cleanup();reject(new Error('GAS 網址載入失敗，請確認部署網址有效、存取權限設為「任何人」，且已部署支援 JSONP 的最新版 Code.gs'));};
     script.src=cloudUrl(action)+'&callback='+encodeURIComponent(cb)+'&_='+Date.now();
     script.async=true;
     document.head.appendChild(script);
@@ -2199,19 +2200,32 @@ function openCloudSheet(){
   document.getElementById('cloudTestResult').textContent=cloudConfig.url?'已設定，可直接使用':'尚未設定';
   document.getElementById('cloudOvl').classList.add('show');
 }
+function ensureCloudStatusEveryPage(){
+  document.querySelectorAll('.page .topbar').forEach(bar=>{
+    const right=bar.querySelector('.topbar-right');
+    if(!right||right.querySelector('.cloud-status'))return;
+    const status=document.createElement('div');
+    status.className='cloud-status';
+    status.innerHTML='<span class="cloud-dot"></span><span class="cloud-status-text">未啟用</span>';
+    right.insertBefore(status,right.firstChild);
+  });
+}
 function updateCloudStatusUI(state){
-  const dot=document.getElementById('cloudDot');
-  const txt=document.getElementById('cloudStatusTxt');
-  if(!dot||!txt)return;
-  dot.className='cloud-dot';
-  if(state==='on'){
-    dot.classList.add('on');
-    txt.textContent=cloudLastSyncAt?'已同步':'已連線';
-  }else if(state==='err'){
-    dot.classList.add('err');txt.textContent='同步重試中';
-  }else if(state==='wait'){
-    dot.classList.add('wait');txt.textContent='同步中...';
-  }else{txt.textContent='未啟用';}
+  ensureCloudStatusEveryPage();
+  document.querySelectorAll('.page .cloud-status').forEach(status=>{
+    const dot=status.querySelector('.cloud-dot');
+    const txt=status.querySelector('#cloudStatusTxt, .cloud-status-text');
+    if(!dot||!txt)return;
+    dot.className='cloud-dot';
+    if(state==='on'){
+      dot.classList.add('on');
+      txt.textContent=cloudLastSyncAt?'已同步':'已連線';
+    }else if(state==='err'){
+      dot.classList.add('err');txt.textContent='連線失敗';
+    }else if(state==='wait'){
+      dot.classList.add('wait');txt.textContent='同步中';
+    }else{txt.textContent='未啟用';}
+  });
 }
 
 async function testCloudConnection(){
@@ -2236,7 +2250,7 @@ async function testCloudConnection(){
         const cleanup=()=>{if(done)return;done=true;clearTimeout(timer);try{delete window[cb];}catch(e){window[cb]=undefined;}if(script.parentNode)script.parentNode.removeChild(script);};
         const timer=setTimeout(()=>{cleanup();reject(new Error('JSONP 連線逾時'));},12000);
         window[cb]=(data)=>{cleanup();if(data&&data.ok)resolve(data);else reject(new Error((data&&data.error)||'GAS 回應錯誤'));};
-        script.onerror=()=>{cleanup();reject(new Error('JSONP 無法載入 GAS Web App'));};
+        script.onerror=()=>{cleanup();reject(new Error('GAS 網址載入失敗，請確認部署網址有效、存取權限設為「任何人」，且已部署支援 JSONP 的最新版 Code.gs'));};
         script.src=target+'&callback='+encodeURIComponent(cb)+'&_='+Date.now();
         script.async=true;
         document.head.appendChild(script);
@@ -3744,6 +3758,7 @@ syncMenuCardsToCategories();
 renderDateBar();updateCart();renderCatPills();updateAiCatOptions();
 // 啟動時固定從「點餐」頁開始，不沿用任何先前頁面狀態
 showPage('pos');
+ensureCloudStatusEveryPage();
 cloudStartup();
 </script>
 </body></html>
